@@ -162,22 +162,40 @@ export async function autocompleteCards(query) {
 
 export async function getCardByName(name) {
   const playableCards = getPlayableCards();
-  const lowerName = name.toLowerCase().trim();
+  let lowerName = name.toLowerCase().trim();
   
-  // Try exact match first (with pitch color)
-  let card = playableCards.find(c => getDisplayName(c).toLowerCase() === lowerName);
+  // Parse pitch color from input: "bare fangs red", "bare fangs (yellow)", "bare fangs blue"
+  let targetPitch = null;
+  const colorPatterns = [
+    { pattern: /\s*\(red\)\s*$/i, pitch: 1 },
+    { pattern: /\s*\(yellow\)\s*$/i, pitch: 2 },
+    { pattern: /\s*\(blue\)\s*$/i, pitch: 3 },
+    { pattern: /\s+red$/i, pitch: 1 },
+    { pattern: /\s+yellow$/i, pitch: 2 },
+    { pattern: /\s+blue$/i, pitch: 3 },
+  ];
   
-  // Try matching without pitch color
-  if (!card) {
-    card = playableCards.find(c => c.name.toLowerCase() === lowerName);
+  for (const { pattern, pitch } of colorPatterns) {
+    if (pattern.test(lowerName)) {
+      targetPitch = pitch;
+      lowerName = lowerName.replace(pattern, '').trim();
+      break;
+    }
   }
   
-  // Try partial match
-  if (!card) {
+  // Try exact match first (with pitch color in display name)
+  let card = playableCards.find(c => getDisplayName(c).toLowerCase() === name.toLowerCase().trim());
+  
+  // If no exact match and we have a target pitch, find card with that pitch
+  if (!card && targetPitch) {
     card = playableCards.find(c => 
-      c.name.toLowerCase() === lowerName ||
-      getDisplayName(c).toLowerCase() === lowerName
+      c.name.toLowerCase() === lowerName && c.pitch === targetPitch
     );
+  }
+  
+  // If still no match, try matching by base name (returns first match)
+  if (!card) {
+    card = playableCards.find(c => c.name.toLowerCase() === lowerName);
   }
   
   // Return card with display name added

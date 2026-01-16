@@ -335,6 +335,13 @@ h1.fab-title {
   margin-bottom: 12px;
 }
 
+.color-hint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+
 .search-container { position: relative; }
 
 .search-input {

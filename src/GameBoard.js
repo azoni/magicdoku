@@ -516,6 +516,9 @@ function GameBoard({ game }) {
             <strong>{gameState.colCategories[gameState.selectedCell % 3]?.label}</strong>
           </p>
         )}
+        {gameId === 'fab' && (
+          <p className="color-hint">Tip: Add color for pitch cards (e.g., "Bare Fangs Yellow")</p>
+        )}
         <form className="guess-form" onSubmit={(e) => { e.preventDefault(); submitGuess(); }}>
           <input
             ref={inputRef}
