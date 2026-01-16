@@ -10,6 +10,36 @@ export const config = {
 
 // Comprehensive skills database
 const SKILLS = [
+  // === BASIC/FUNDAMENTAL SKILLS ===
+  { id: 'handstand', name: 'Handstand', apparatus: ['floor', 'beam', 'bars'], type: 'acrobatic', difficulty: 'A', group: 'static' },
+  { id: 'forward-roll', name: 'Forward Roll', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'forward' },
+  { id: 'backward-roll', name: 'Backward Roll', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'backward' },
+  { id: 'bridge', name: 'Bridge', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'flexibility' },
+  { id: 'backbend', name: 'Backbend', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'flexibility' },
+  { id: 'kickover', name: 'Back Kickover', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'backward' },
+  { id: 'headstand', name: 'Headstand', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'static' },
+  { id: 'splits', name: 'Splits', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'flexibility' },
+  { id: 'straddle-splits', name: 'Straddle Splits', apparatus: ['floor'], type: 'dance', difficulty: 'A', group: 'flexibility' },
+  { id: 'scale', name: 'Scale', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'balance' },
+  { id: 'arabesque', name: 'Arabesque', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'balance' },
+  { id: 'y-scale', name: 'Y Scale', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'B', group: 'balance' },
+  { id: 'needle', name: 'Needle Scale', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'C', group: 'balance' },
+  { id: 'lunge', name: 'Lunge', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'basic' },
+  { id: 'releve', name: 'Relevé', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'basic' },
+  { id: 'passe', name: 'Passé', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'basic' },
+  { id: 'coupe', name: 'Coupé', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'basic' },
+  { id: 'chasse', name: 'Chassé', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'basic' },
+  { id: 'straight-jump', name: 'Straight Jump', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'leap' },
+  { id: 'tuck-jump', name: 'Tuck Jump', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'leap' },
+  { id: 'half-turn-jump', name: 'Half Turn Jump', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'leap' },
+  { id: 'pivot-turn', name: 'Pivot Turn', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'turn' },
+  { id: 'half-turn', name: 'Half Turn', apparatus: ['floor', 'beam'], type: 'dance', difficulty: 'A', group: 'turn' },
+  { id: 'candlestick', name: 'Candlestick', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'static' },
+  { id: 'press-handstand', name: 'Press Handstand', apparatus: ['floor', 'beam'], type: 'acrobatic', difficulty: 'B', group: 'static' },
+  { id: 'straddle-press', name: 'Straddle Press', apparatus: ['floor'], type: 'acrobatic', difficulty: 'B', group: 'static' },
+  { id: 'handstand-forward-roll', name: 'Handstand Forward Roll', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'forward' },
+  { id: 'dive-roll', name: 'Dive Roll', apparatus: ['floor'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'forward' },
+
   // === FLOOR EXERCISE (Women's & Men's) ===
   // Tumbling - Backward
   { id: 'back-handspring', name: 'Back Handspring', apparatus: ['floor', 'beam'], type: 'acrobatic', difficulty: 'A', group: 'tumbling', direction: 'backward' },
@@ -230,6 +260,9 @@ export const CATEGORIES = {
     { id: 'group-tumbling', label: 'Tumbling', query: 'tumbling', filter: (s) => s.group === 'tumbling' },
     { id: 'group-leap', label: 'Leaps/Jumps', query: 'leap', filter: (s) => s.group === 'leap' },
     { id: 'group-turn', label: 'Turns', query: 'turn', filter: (s) => s.group === 'turn' },
+    { id: 'group-static', label: 'Static/Holds', query: 'static', filter: (s) => s.group === 'static' },
+    { id: 'group-flexibility', label: 'Flexibility', query: 'flexibility', filter: (s) => s.group === 'flexibility' },
+    { id: 'group-balance', label: 'Balance', query: 'balance', filter: (s) => s.group === 'balance' },
     { id: 'group-swing', label: 'Swings', query: 'swing', filter: (s) => s.group === 'swing' },
     { id: 'group-release', label: 'Releases', query: 'release', filter: (s) => s.group === 'release' },
     { id: 'group-strength', label: 'Strength', query: 'strength', filter: (s) => s.group === 'strength' },
