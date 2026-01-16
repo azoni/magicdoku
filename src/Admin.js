@@ -6,15 +6,18 @@ import { doc, getDoc, setDoc, collection, getDocs, query, orderBy } from 'fireba
 // Import default categories
 import { CATEGORIES as MTG_CATEGORIES, config as mtgConfig } from './games/mtg';
 import { CATEGORIES as FAB_CATEGORIES, config as fabConfig } from './games/fab';
+import { CATEGORIES as GYM_CATEGORIES, config as gymConfig } from './games/gymnastics';
 
 const DEFAULT_CATEGORIES = {
   mtg: MTG_CATEGORIES,
   fab: FAB_CATEGORIES,
+  gymnastics: GYM_CATEGORIES,
 };
 
 const GAME_CONFIGS = {
   mtg: mtgConfig,
   fab: fabConfig,
+  gymnastics: gymConfig,
 };
 
 // Strip functions from categories for storage
@@ -79,8 +82,8 @@ export function AdminHome() {
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
-  const [gameImages, setGameImages] = useState({ mtg: '', fab: '' });
-  const [imageInputs, setImageInputs] = useState({ mtg: '', fab: '' });
+  const [gameImages, setGameImages] = useState({ mtg: '', fab: '', gymnastics: '' });
+  const [imageInputs, setImageInputs] = useState({ mtg: '', fab: '', gymnastics: '' });
   const [savingImages, setSavingImages] = useState(false);
 
   // Password from environment variable
@@ -126,8 +129,8 @@ export function AdminHome() {
         const settingsSnap = await getDoc(settingsRef);
         if (settingsSnap.exists()) {
           const images = settingsSnap.data();
-          setGameImages({ mtg: images.mtg || '', fab: images.fab || '' });
-          setImageInputs({ mtg: images.mtg || '', fab: images.fab || '' });
+          setGameImages({ mtg: images.mtg || '', fab: images.fab || '', gymnastics: images.gymnastics || '' });
+          setImageInputs({ mtg: images.mtg || '', fab: images.fab || '', gymnastics: images.gymnastics || '' });
         }
         
         setFirebaseStatus('connected');
@@ -148,6 +151,7 @@ export function AdminHome() {
       await setDoc(settingsRef, {
         mtg: imageInputs.mtg,
         fab: imageInputs.fab,
+        gymnastics: imageInputs.gymnastics,
         updatedAt: new Date().toISOString(),
       });
       setGameImages({ ...imageInputs });
@@ -158,7 +162,7 @@ export function AdminHome() {
     setSavingImages(false);
   };
 
-  const hasUnsavedChanges = gameImages.mtg !== imageInputs.mtg || gameImages.fab !== imageInputs.fab;
+  const hasUnsavedChanges = gameImages.mtg !== imageInputs.mtg || gameImages.fab !== imageInputs.fab || gameImages.gymnastics !== imageInputs.gymnastics;
 
   // Show login screen if not authenticated
   if (!authenticated) {

@@ -10,17 +10,19 @@ import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebas
 // Import game configs
 import * as mtg from './games/mtg';
 import * as fab from './games/fab';
+import * as gymnastics from './games/gymnastics';
 
 const games = {
   mtg,
   fab,
+  gymnastics,
 };
 
 // Home Page
 function Home() {
   const [communityPuzzles, setCommunityPuzzles] = useState([]);
   const [loadingPuzzles, setLoadingPuzzles] = useState(true);
-  const [gameImages, setGameImages] = useState({ mtg: '', fab: '' });
+  const [gameImages, setGameImages] = useState({ mtg: '', fab: '', gymnastics: '' });
 
   useEffect(() => {
     async function loadData() {
@@ -41,7 +43,11 @@ function Home() {
         const settingsSnap = await getDoc(settingsRef);
         if (settingsSnap.exists()) {
           const images = settingsSnap.data();
-          setGameImages({ mtg: images.mtg || '', fab: images.fab || '' });
+          setGameImages({ 
+            mtg: images.mtg || '', 
+            fab: images.fab || '',
+            gymnastics: images.gymnastics || '',
+          });
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -56,7 +62,7 @@ function Home() {
     <div className="app">
       <div className="home">
         <h1>TCG<span className="accent">DOKU</span></h1>
-        <p className="tagline">Daily card game puzzles</p>
+        <p className="tagline">Daily puzzle games</p>
         
         {/* Daily Puzzles */}
         <h2 className="section-title">Daily Puzzles</h2>
@@ -84,6 +90,18 @@ function Home() {
               <p>Match cards by class, pitch, cost, and more</p>
             </div>
           </Link>
+          
+          <Link to="/gymnastics" className="game-card gymnastics">
+            {gameImages.gymnastics && (
+              <div className="game-card-image">
+                <img src={gameImages.gymnastics} alt="Gymnastics" />
+              </div>
+            )}
+            <div className="game-card-content">
+              <h2>Gymnastics</h2>
+              <p>Match skills by apparatus, difficulty, and type</p>
+            </div>
+          </Link>
         </div>
 
         {/* Create Your Own */}
@@ -107,7 +125,7 @@ function Home() {
               >
                 <div className="community-header">
                   <span className="community-game">
-                    {puzzle.gameId === 'mtg' ? 'MTG' : 'FAB'}
+                    {puzzle.gameId === 'mtg' ? 'MTG' : puzzle.gameId === 'fab' ? 'FAB' : 'GYM'}
                   </span>
                 </div>
                 <h3>{puzzle.name}</h3>

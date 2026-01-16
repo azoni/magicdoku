@@ -5,10 +5,12 @@ import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 
 import { CATEGORIES as MTG_CATEGORIES, config as mtgConfig } from './games/mtg';
 import { CATEGORIES as FAB_CATEGORIES, config as fabConfig } from './games/fab';
+import { CATEGORIES as GYM_CATEGORIES, config as gymConfig } from './games/gymnastics';
 
 const GAME_CONFIGS = {
   mtg: { config: mtgConfig, categories: MTG_CATEGORIES },
   fab: { config: fabConfig, categories: FAB_CATEGORIES },
+  gymnastics: { config: gymConfig, categories: GYM_CATEGORIES },
 };
 
 // Flatten categories into array with group labels

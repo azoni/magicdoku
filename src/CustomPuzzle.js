@@ -5,10 +5,12 @@ import { doc, getDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
 
 import * as mtgGame from './games/mtg';
 import * as fabGame from './games/fab';
+import * as gymGame from './games/gymnastics';
 
 const GAMES = {
   mtg: mtgGame,
   fab: fabGame,
+  gymnastics: gymGame,
 };
 
 // Record a guess to Firebase

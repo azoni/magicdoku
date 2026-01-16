@@ -74,6 +74,10 @@ a {
   border-color: rgba(220, 53, 69, 0.4);
 }
 
+.game-card.gymnastics:hover {
+  border-color: rgba(138, 79, 255, 0.4);
+}
+
 .game-card-image {
   width: 100%;
   height: 120px;
@@ -152,6 +156,10 @@ h1.fab-title {
   background-clip: text;
 }
 
+h1.gymnastics-title {
+  color: #8a4fff;
+}
+
 .date {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.9rem;
@@ -178,6 +186,7 @@ h1.fab-title {
 
 .stat.mtg span { color: #f8e45c; }
 .stat.fab span { color: #ff6b6b; }
+.stat.gymnastics span { color: #8a4fff; }
 
 .total-plays {
   text-align: center;
@@ -273,6 +282,11 @@ h1.fab-title {
   background: rgba(220, 53, 69, 0.1);
 }
 
+.cell.selected.gymnastics {
+  border-color: #8a4fff;
+  background: rgba(138, 79, 255, 0.1);
+}
+
 .cell.solved {
   background: rgba(40, 80, 20, 0.5);
   border-color: rgba(40, 80, 20, 0.8);
@@ -350,6 +364,7 @@ h1.fab-title {
 
 .input-section h3.mtg { color: #f8e45c; }
 .input-section h3.fab { color: #ff6b6b; }
+.input-section h3.gymnastics { color: #8a4fff; }
 
 .criteria-hint {
   font-size: 0.85rem;
@@ -380,6 +395,7 @@ h1.fab-title {
 .search-input::placeholder { color: rgba(255, 255, 255, 0.4); }
 .search-input:focus { border-color: rgba(248, 228, 92, 0.6); background: rgba(255, 255, 255, 0.08); }
 .search-input.fab:focus { border-color: rgba(255, 107, 107, 0.6); }
+.search-input.gymnastics:focus { border-color: rgba(138, 79, 255, 0.6); }
 
 /* Guess Form */
 .guess-form {
@@ -821,6 +837,15 @@ button {
   background: #c82333;
 }
 
+.btn-primary.gymnastics {
+  background: #8a4fff;
+  color: white;
+}
+
+.btn-primary.gymnastics:hover {
+  background: #7a3fef;
+}
+
 .btn-secondary {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.8);
@@ -877,6 +902,7 @@ button:disabled {
 }
 
 .spinner.fab { border-top-color: #ff6b6b; }
+.spinner.gymnastics { border-top-color: #8a4fff; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -998,6 +1024,10 @@ button:disabled {
   border-color: rgba(220, 53, 69, 0.3);
 }
 
+.community-card.gymnastics:hover {
+  border-color: rgba(138, 79, 255, 0.3);
+}
+
 .community-header {
   display: flex;
   align-items: center;
@@ -1021,6 +1051,10 @@ button:disabled {
 
 .community-card.fab .community-game {
   color: #ff6b6b;
+}
+
+.community-card.gymnastics .community-game {
+  color: #8a4fff;
 }
 
 .community-card h3 {
@@ -1106,6 +1140,7 @@ button:disabled {
 
 .admin-game-card.mtg:hover { border-color: rgba(248, 228, 92, 0.5); }
 .admin-game-card.fab:hover { border-color: rgba(220, 53, 69, 0.5); }
+.admin-game-card.gymnastics:hover { border-color: rgba(138, 79, 255, 0.5); }
 
 .admin-game-card h2 { font-size: 1.2rem; margin-bottom: 4px; }
 .admin-game-card p { color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; }
@@ -1600,6 +1635,11 @@ button:disabled {
 .game-option.selected.fab {
   border-color: #ff6b6b;
   box-shadow: 0 0 20px rgba(255, 107, 107, 0.2);
+}
+
+.game-option.selected.gymnastics {
+  border-color: #8a4fff;
+  box-shadow: 0 0 20px rgba(138, 79, 255, 0.2);
 }
 
 .game-option span {
