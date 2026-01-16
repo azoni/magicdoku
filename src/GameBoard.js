@@ -334,11 +334,6 @@ function GameBoard({ game }) {
           gameOver: isWin || newGuesses >= 9,
         };
       } else {
-        const row = Math.floor(prev.selectedCell / 3);
-        const col = prev.selectedCell % 3;
-        const rowCat = prev.rowCategories[row];
-        const colCat = prev.colCategories[col];
-        
         showMessage(`Wrong! ${card.name} - Doesn't match criteria`, 'error');
         
         const isGameOver = newGuesses >= 9;

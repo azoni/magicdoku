@@ -59,16 +59,6 @@ async function saveCategoriesToFirebase(gameId, categories) {
   }
 }
 
-// Seed all default categories to Firebase
-async function seedAllCategories() {
-  const results = [];
-  for (const [gameId, categories] of Object.entries(DEFAULT_CATEGORIES)) {
-    const success = await saveCategoriesToFirebase(gameId, categories);
-    results.push({ gameId, success });
-  }
-  return results;
-}
-
 function formatDate(dateStr) {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { 
@@ -86,9 +76,34 @@ export function AdminHome() {
   const [filter, setFilter] = useState('all');
   const [dateRange, setDateRange] = useState('7');
   const [firebaseStatus, setFirebaseStatus] = useState('checking');
-  const [seeding, setSeeding] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+
+  // Password from environment variable
+  const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (ADMIN_PASSWORD && passwordInput === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+      sessionStorage.setItem('tcgdoku-admin-auth', 'true');
+    } else {
+      setPasswordError(true);
+      setTimeout(() => setPasswordError(false), 2000);
+    }
+  };
+
+  // Check if already authenticated this session
+  useEffect(() => {
+    if (sessionStorage.getItem('tcgdoku-admin-auth') === 'true') {
+      setAuthenticated(true);
+    }
+  }, []);
 
   useEffect(() => {
+    if (!authenticated) return;
+    
     async function loadStats() {
       setLoading(true);
       try {
@@ -110,23 +125,44 @@ export function AdminHome() {
     }
     
     loadStats();
-  }, []);
+  }, [authenticated]);
 
-  const handleSeedDatabase = async () => {
-    if (!window.confirm('This will initialize/overwrite categories in Firebase with defaults. Continue?')) {
-      return;
+  // Show login screen if not authenticated
+  if (!authenticated) {
+    // Check if password is configured
+    if (!ADMIN_PASSWORD) {
+      return (
+        <div className="app">
+          <div className="admin-login">
+            <Link to="/" className="back-link">← Back to Games</Link>
+            <h1>🔒 Admin Panel</h1>
+            <p className="error-text">Admin password not configured. Set REACT_APP_ADMIN_PASSWORD in environment variables.</p>
+          </div>
+        </div>
+      );
     }
-    setSeeding(true);
-    const results = await seedAllCategories();
-    setSeeding(false);
-    const allSuccess = results.every(r => r.success);
-    if (allSuccess) {
-      alert('Database seeded successfully! Categories are now in Firebase.');
-      setFirebaseStatus('connected');
-    } else {
-      alert('Some categories failed to seed. Check console for errors.');
-    }
-  };
+    
+    return (
+      <div className="app">
+        <div className="admin-login">
+          <Link to="/" className="back-link">← Back to Games</Link>
+          <h1>🔒 Admin Panel</h1>
+          <form onSubmit={handleLogin} className="login-form">
+            <input
+              type="password"
+              placeholder="Enter admin password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className={passwordError ? 'error' : ''}
+              autoFocus
+            />
+            <button type="submit" className="btn-primary">Login</button>
+          </form>
+          {passwordError && <p className="error-text">Incorrect password</p>}
+        </div>
+      </div>
+    );
+  }
 
   // Filter stats
   const filteredStats = stats.filter(s => {
@@ -162,36 +198,6 @@ export function AdminHome() {
           {firebaseStatus === 'checking' && '🔄 Checking Firebase connection...'}
           {firebaseStatus === 'connected' && '✅ Firebase connected'}
           {firebaseStatus === 'error' && '❌ Firebase offline - check your config'}
-        </div>
-
-        {/* Seed Database Button */}
-        {firebaseStatus === 'error' && (
-          <div className="admin-section">
-            <h3>⚠️ Firebase Setup Required</h3>
-            <p style={{ marginBottom: '12px', color: 'rgba(255,255,255,0.7)' }}>
-              Make sure you have:
-              <br/>1. Created a Firebase project
-              <br/>2. Added env variables (REACT_APP_FIREBASE_*)
-              <br/>3. Enabled Firestore Database
-              <br/>4. Set Firestore rules to allow read/write
-            </p>
-          </div>
-        )}
-
-        <div className="admin-section">
-          <h3>Database Setup</h3>
-          <div className="admin-buttons">
-            <button 
-              className="btn-primary" 
-              onClick={handleSeedDatabase}
-              disabled={seeding}
-            >
-              {seeding ? 'Seeding...' : '🌱 Seed Database with Defaults'}
-            </button>
-          </div>
-          <p style={{ marginTop: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
-            Run this once to initialize categories in Firebase
-          </p>
         </div>
         
         {/* Category Management */}
@@ -364,6 +370,13 @@ export function CategoryEditor() {
   const [firebaseLoaded, setFirebaseLoaded] = useState(false);
 
   const config = GAME_CONFIGS[gameId];
+
+  // Check authentication
+  useEffect(() => {
+    if (sessionStorage.getItem('tcgdoku-admin-auth') !== 'true') {
+      navigate('/admin');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (!config) {
