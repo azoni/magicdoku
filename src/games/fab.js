@@ -1,62 +1,77 @@
 // Flesh and Blood Game Configuration
-// Uses FaBDB API
+// Uses static JSON from the-fab-cube/flesh-and-blood-cards GitHub repo
 
-const FABDB_API = 'https://api.fabdb.net';
+const CARDS_URL = 'https://raw.githubusercontent.com/the-fab-cube/flesh-and-blood-cards/refs/heads/main/json/english/card.json';
 
-// Rate limiting
-let lastRequest = 0;
-const MIN_REQUEST_INTERVAL = 100;
+// Cache for loaded cards
+let cardsCache = null;
+let cardsLoading = null;
 
-async function rateLimitedFetch(url) {
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequest;
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
-  }
-  lastRequest = Date.now();
-  return fetch(url);
+// Load all cards (cached)
+async function loadCards() {
+  if (cardsCache) return cardsCache;
+  if (cardsLoading) return cardsLoading;
+  
+  cardsLoading = fetch(CARDS_URL)
+    .then(res => res.json())
+    .then(cards => {
+      cardsCache = cards;
+      return cards;
+    })
+    .catch(err => {
+      console.error('Error loading FAB cards:', err);
+      cardsLoading = null;
+      return [];
+    });
+  
+  return cardsLoading;
 }
 
 // Default Categories
 export const CATEGORIES = {
   classes: [
-    { id: 'brute', label: 'Brute', query: 'class=brute', apiParam: { class: 'brute' } },
-    { id: 'guardian', label: 'Guardian', query: 'class=guardian', apiParam: { class: 'guardian' } },
-    { id: 'ninja', label: 'Ninja', query: 'class=ninja', apiParam: { class: 'ninja' } },
-    { id: 'wizard', label: 'Wizard', query: 'class=wizard', apiParam: { class: 'wizard' } },
-    { id: 'warrior', label: 'Warrior', query: 'class=warrior', apiParam: { class: 'warrior' } },
-    { id: 'mechanologist', label: 'Mechanologist', query: 'class=mechanologist', apiParam: { class: 'mechanologist' } },
-    { id: 'runeblade', label: 'Runeblade', query: 'class=runeblade', apiParam: { class: 'runeblade' } },
-    { id: 'ranger', label: 'Ranger', query: 'class=ranger', apiParam: { class: 'ranger' } },
-    { id: 'illusionist', label: 'Illusionist', query: 'class=illusionist', apiParam: { class: 'illusionist' } },
-    { id: 'generic', label: 'Generic', query: 'class=generic', apiParam: { class: 'generic' } },
+    { id: 'brute', label: 'Brute', filter: c => c.classes?.includes('Brute') },
+    { id: 'guardian', label: 'Guardian', filter: c => c.classes?.includes('Guardian') },
+    { id: 'ninja', label: 'Ninja', filter: c => c.classes?.includes('Ninja') },
+    { id: 'wizard', label: 'Wizard', filter: c => c.classes?.includes('Wizard') },
+    { id: 'warrior', label: 'Warrior', filter: c => c.classes?.includes('Warrior') },
+    { id: 'mechanologist', label: 'Mechanologist', filter: c => c.classes?.includes('Mechanologist') },
+    { id: 'runeblade', label: 'Runeblade', filter: c => c.classes?.includes('Runeblade') },
+    { id: 'ranger', label: 'Ranger', filter: c => c.classes?.includes('Ranger') },
+    { id: 'illusionist', label: 'Illusionist', filter: c => c.classes?.includes('Illusionist') },
+    { id: 'generic', label: 'Generic', filter: c => c.classes?.includes('Generic') },
   ],
   pitch: [
-    { id: 'pitch1', label: 'Pitch 1 (Red)', query: 'pitch=1', apiParam: { pitch: '1' }, colorClass: 'pitch-1' },
-    { id: 'pitch2', label: 'Pitch 2 (Yellow)', query: 'pitch=2', apiParam: { pitch: '2' }, colorClass: 'pitch-2' },
-    { id: 'pitch3', label: 'Pitch 3 (Blue)', query: 'pitch=3', apiParam: { pitch: '3' }, colorClass: 'pitch-3' },
+    { id: 'pitch1', label: 'Pitch 1 (Red)', filter: c => c.pitch === 1, colorClass: 'pitch-1' },
+    { id: 'pitch2', label: 'Pitch 2 (Yellow)', filter: c => c.pitch === 2, colorClass: 'pitch-2' },
+    { id: 'pitch3', label: 'Pitch 3 (Blue)', filter: c => c.pitch === 3, colorClass: 'pitch-3' },
   ],
   types: [
-    { id: 'attack', label: 'Attack Action', query: 'keywords=attack', apiParam: { keywords: 'attack action' } },
-    { id: 'defense', label: 'Defense Reaction', query: 'keywords=defense', apiParam: { keywords: 'defense reaction' } },
-    { id: 'instant', label: 'Instant', query: 'keywords=instant', apiParam: { keywords: 'instant' } },
-    { id: 'action', label: 'Action', query: 'keywords=action', apiParam: { keywords: 'action' } },
+    { id: 'attack', label: 'Attack Action', filter: c => c.types?.some(t => t.includes('Attack')) },
+    { id: 'defense', label: 'Defense Reaction', filter: c => c.types?.some(t => t.includes('Defense')) },
+    { id: 'instant', label: 'Instant', filter: c => c.types?.includes('Instant') },
+    { id: 'action', label: 'Action', filter: c => c.types?.includes('Action') && !c.types?.some(t => t.includes('Attack')) },
   ],
   rarity: [
-    { id: 'common', label: 'Common', query: 'rarity=C', apiParam: { rarity: 'C' } },
-    { id: 'rare', label: 'Rare', query: 'rarity=R', apiParam: { rarity: 'R' } },
-    { id: 'majestic', label: 'Majestic', query: 'rarity=M', apiParam: { rarity: 'M' } },
-  ],
-  keywords: [
-    { id: 'goAgain', label: 'Go Again', query: 'keywords=go again', apiParam: { keywords: 'go again' } },
-    { id: 'dominate', label: 'Dominate', query: 'keywords=dominate', apiParam: { keywords: 'dominate' } },
-    { id: 'intimidate', label: 'Intimidate', query: 'keywords=intimidate', apiParam: { keywords: 'intimidate' } },
+    { id: 'common', label: 'Common', filter: c => c.rarity === 'Common' || c.rarities?.includes('C') },
+    { id: 'rare', label: 'Rare', filter: c => c.rarity === 'Rare' || c.rarities?.includes('R') },
+    { id: 'majestic', label: 'Majestic', filter: c => c.rarity === 'Majestic' || c.rarities?.includes('M') },
+    { id: 'legendary', label: 'Legendary', filter: c => c.rarity === 'Legendary' || c.rarities?.includes('L') },
   ],
   cost: [
-    { id: 'cost0', label: 'Cost 0', query: 'cost=0', apiParam: { cost: '0' } },
-    { id: 'cost1', label: 'Cost 1', query: 'cost=1', apiParam: { cost: '1' } },
-    { id: 'cost2', label: 'Cost 2', query: 'cost=2', apiParam: { cost: '2' } },
-    { id: 'cost3plus', label: 'Cost 3+', query: 'cost=3', apiParam: { cost: '3' } },
+    { id: 'cost0', label: 'Cost 0', filter: c => c.cost === 0 || c.cost === '0' },
+    { id: 'cost1', label: 'Cost 1', filter: c => c.cost === 1 || c.cost === '1' },
+    { id: 'cost2', label: 'Cost 2', filter: c => c.cost === 2 || c.cost === '2' },
+    { id: 'cost3plus', label: 'Cost 3+', filter: c => (parseInt(c.cost) || 0) >= 3 },
+  ],
+  power: [
+    { id: 'power3', label: 'Power 3+', filter: c => (parseInt(c.power) || 0) >= 3 },
+    { id: 'power5', label: 'Power 5+', filter: c => (parseInt(c.power) || 0) >= 5 },
+    { id: 'power7', label: 'Power 7+', filter: c => (parseInt(c.power) || 0) >= 7 },
+  ],
+  defense: [
+    { id: 'defense2', label: 'Defense 2+', filter: c => (parseInt(c.defense) || 0) >= 2 },
+    { id: 'defense3', label: 'Defense 3+', filter: c => (parseInt(c.defense) || 0) >= 3 },
   ],
 };
 
@@ -65,7 +80,20 @@ function getCategories() {
   const saved = localStorage.getItem('tcgdoku-admin-fab');
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Re-attach filter functions based on IDs
+      Object.keys(parsed).forEach(groupKey => {
+        parsed[groupKey] = parsed[groupKey].map(cat => {
+          // Find matching default category to get filter function
+          const defaultGroup = CATEGORIES[groupKey];
+          const defaultCat = defaultGroup?.find(d => d.id === cat.id);
+          return {
+            ...cat,
+            filter: defaultCat?.filter || (() => false),
+          };
+        });
+      });
+      return parsed;
     } catch (e) {
       console.error('Error loading saved categories:', e);
     }
@@ -73,112 +101,59 @@ function getCategories() {
   return CATEGORIES;
 }
 
-// Build query string from category
-function buildQueryString(cat1, cat2) {
-  const params = new URLSearchParams();
-  
-  // Helper to add params
-  const addParams = (cat) => {
-    if (cat.apiParam) {
-      Object.entries(cat.apiParam).forEach(([key, value]) => {
-        // Keywords need special handling - combine them
-        if (key === 'keywords' && params.has('keywords')) {
-          params.set('keywords', params.get('keywords') + ' ' + value);
-        } else {
-          params.set(key, value);
-        }
-      });
-    }
-  };
-  
-  addParams(cat1);
-  addParams(cat2);
-  
-  return params.toString();
+// Check if a card matches a category
+function cardMatchesFilter(card, category) {
+  if (typeof category.filter === 'function') {
+    return category.filter(card);
+  }
+  return false;
 }
 
 // API Functions
 export async function checkValidCardExists(cat1, cat2) {
-  const queryString = buildQueryString(cat1, cat2);
-  try {
-    const response = await rateLimitedFetch(
-      `${FABDB_API}/cards?${queryString}&per_page=1`
-    );
-    const data = await response.json();
-    return data.data && data.data.length > 0;
-  } catch (error) {
-    console.error('Error checking card validity:', error);
-    return false;
-  }
+  const cards = await loadCards();
+  return cards.some(card => cardMatchesFilter(card, cat1) && cardMatchesFilter(card, cat2));
 }
 
 export async function autocompleteCards(query) {
   if (query.length < 2) return [];
-  try {
-    const response = await rateLimitedFetch(
-      `${FABDB_API}/cards?keywords=${encodeURIComponent(query)}&per_page=10`
-    );
-    const data = await response.json();
-    return data.data || [];
-  } catch (error) {
-    console.error('Error with search:', error);
-    return [];
-  }
+  const cards = await loadCards();
+  const lowerQuery = query.toLowerCase();
+  return cards
+    .filter(card => card.name?.toLowerCase().includes(lowerQuery))
+    .slice(0, 10);
 }
 
 export async function getCardByName(name) {
-  // For FAB, we already have the full card from autocomplete
-  // This is just for compatibility with the interface
-  return name; // The card object is already passed
+  const cards = await loadCards();
+  return cards.find(card => card.name?.toLowerCase() === name.toLowerCase());
 }
 
 export async function cardMatchesCategory(card, category) {
-  // Check if card matches the category by searching with card name + category filters
-  const cardName = typeof card === 'string' ? card : card.name;
-  
-  try {
-    const params = new URLSearchParams();
-    params.set('keywords', cardName);
-    
-    if (category.apiParam) {
-      Object.entries(category.apiParam).forEach(([key, value]) => {
-        if (key === 'keywords') {
-          // Add to existing keywords
-          params.set('keywords', cardName + ' ' + value);
-        } else {
-          params.set(key, value);
-        }
-      });
-    }
-    
-    const response = await rateLimitedFetch(
-      `${FABDB_API}/cards?${params.toString()}&per_page=10`
-    );
-    const data = await response.json();
-    
-    // Check if our card is in the results
-    if (data.data) {
-      return data.data.some(c => 
-        c.name.toLowerCase() === cardName.toLowerCase() ||
-        c.name.toLowerCase().includes(cardName.toLowerCase())
-      );
-    }
-    return false;
-  } catch (error) {
-    console.error('Error checking card match:', error);
-    return false;
-  }
+  return cardMatchesFilter(card, category);
 }
 
 export function getCardImage(card) {
-  // FaBDB returns image URL directly
-  return card.image || null;
+  // Try to get image from printings
+  if (card.printings && card.printings.length > 0) {
+    const printing = card.printings[0];
+    if (printing.image) return printing.image;
+    // Construct image URL from set and identifier
+    if (printing.identifier) {
+      return `https://storage.googleapis.com/fabmaster/cardfaces/${printing.identifier}.png`;
+    }
+  }
+  // Fallback to card identifier
+  if (card.identifier) {
+    return `https://storage.googleapis.com/fabmaster/cardfaces/${card.identifier}.png`;
+  }
+  return null;
 }
 
 export function getCardDisplayInfo(card) {
   return {
     name: card.name,
-    set: card.printings?.[0]?.set?.name || '',
+    set: card.printings?.[0]?.set || card.set_printings?.[0] || '',
   };
 }
 
@@ -186,11 +161,11 @@ export function getCardDisplayInfo(card) {
 export function getAllCategories() {
   const cats = getCategories();
   return [
-    ...((cats.classes || []).slice(0, 6)), // Limit to most common classes
+    ...((cats.classes || []).slice(0, 6)),
     ...(cats.pitch || []),
     ...(cats.types || []),
-    ...(cats.rarity || []),
-    ...((cats.cost || []).slice(0, 3)),
+    ...(cats.rarity || []).slice(0, 3),
+    ...(cats.cost || []).slice(0, 3),
   ];
 }
 
@@ -201,6 +176,9 @@ export function getFallbackCategories() {
     colCategories: [CATEGORIES.pitch[0], CATEGORIES.pitch[1], CATEGORIES.pitch[2]],
   };
 }
+
+// Preload cards on module load
+loadCards();
 
 // Config export
 export const config = {
