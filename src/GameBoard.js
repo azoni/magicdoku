@@ -435,7 +435,7 @@ function GameBoard({ game }) {
 
       {gameState.gameOver && stats && (
         <div className="total-plays">
-          📊 {stats.totalGuesses || 0} total guesses today
+          {stats.totalGuesses || 0} total guesses today
         </div>
       )}
 

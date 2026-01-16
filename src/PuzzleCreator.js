@@ -151,7 +151,7 @@ export default function PuzzleCreator() {
     <div className="app">
       <div className="puzzle-creator">
         <Link to="/" className="back-link">← Back to Home</Link>
-        <h1>🎨 Create Custom Puzzle</h1>
+        <h1>Create Custom Puzzle</h1>
         <p className="creator-subtitle">Design your own TCGDoku for others to play!</p>
         
         <form onSubmit={handleSubmit}>
@@ -166,7 +166,6 @@ export default function PuzzleCreator() {
                   className={`game-option ${id} ${gameId === id ? 'selected' : ''}`}
                   onClick={() => setGameId(id)}
                 >
-                  <span className="game-emoji">{cfg.emoji}</span>
                   <span>{cfg.name}</span>
                 </button>
               ))}
@@ -281,7 +280,7 @@ export default function PuzzleCreator() {
             className={`btn-primary ${gameId} create-btn`}
             disabled={!isValid() || submitting}
           >
-            {submitting ? 'Creating...' : '✨ Create Puzzle'}
+            {submitting ? 'Creating...' : 'Create Puzzle'}
           </button>
         </form>
       </div>

@@ -385,8 +385,8 @@ export default function CustomPuzzle() {
       {/* Game Over Actions */}
       {gameState.gameOver && (
         <div className="game-over-actions">
-          <button className={`btn-primary ${gameId}`} onClick={shareResults}>📋 Share Results</button>
-          <Link to="/" className="btn-secondary">🏠 Back to Home</Link>
+          <button className={`btn-primary ${gameId}`} onClick={shareResults}>Share Results</button>
+          <Link to="/" className="btn-secondary">Back to Home</Link>
         </div>
       )}
     </div>

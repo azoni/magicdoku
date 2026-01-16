@@ -49,16 +49,14 @@ function Home() {
         <p className="tagline">Daily card game puzzles</p>
         
         {/* Daily Puzzles */}
-        <h2 className="section-title">📅 Daily Puzzles</h2>
+        <h2 className="section-title">Daily Puzzles</h2>
         <div className="game-grid">
           <Link to="/mtg" className="game-card mtg">
-            <div className="icon">🎴</div>
             <h2>Magic: The Gathering</h2>
             <p>Match cards by color, type, mana value, and more</p>
           </Link>
           
           <Link to="/fab" className="game-card fab">
-            <div className="icon">⚔️</div>
             <h2>Flesh and Blood</h2>
             <p>Match cards by class, pitch, cost, and more</p>
           </Link>
@@ -67,13 +65,12 @@ function Home() {
         {/* Create Your Own */}
         <div className="create-section">
           <Link to="/create" className="create-button">
-            <span className="create-icon">🎨</span>
-            <span className="create-text">Create Your Own Puzzle</span>
+            Create Your Own Puzzle
           </Link>
         </div>
 
         {/* Community Puzzles */}
-        <h2 className="section-title">🌟 Community Puzzles</h2>
+        <h2 className="section-title">Community Puzzles</h2>
         {loadingPuzzles ? (
           <div className="loading-small">Loading puzzles...</div>
         ) : communityPuzzles.length > 0 ? (
@@ -85,9 +82,6 @@ function Home() {
                 className={`community-card ${puzzle.gameId}`}
               >
                 <div className="community-header">
-                  <span className="community-emoji">
-                    {puzzle.gameId === 'mtg' ? '🎴' : '⚔️'}
-                  </span>
                   <span className="community-game">
                     {puzzle.gameId === 'mtg' ? 'MTG' : 'FAB'}
                   </span>
@@ -104,7 +98,7 @@ function Home() {
           <p className="no-puzzles">No community puzzles yet. Be the first to create one!</p>
         )}
         
-        <Link to="/admin" className="admin-link">⚙️ Admin Panel</Link>
+        <Link to="/admin" className="admin-link">Admin Panel</Link>
       </div>
     </div>
   );
