@@ -18,11 +18,19 @@ const games = {
   gymnastics,
 };
 
+// Game display info
+const GAME_INFO = {
+  mtg: { name: 'Magic: The Gathering', description: 'Match cards by color, type, mana value, and more' },
+  fab: { name: 'Flesh and Blood', description: 'Match cards by class, pitch, cost, and more' },
+  gymnastics: { name: 'Gymnastics', description: 'Match skills by apparatus, difficulty, and type' },
+};
+
 // Home Page
 function Home() {
   const [communityPuzzles, setCommunityPuzzles] = useState([]);
   const [loadingPuzzles, setLoadingPuzzles] = useState(true);
   const [gameImages, setGameImages] = useState({ mtg: '', fab: '', gymnastics: '' });
+  const [hiddenGames, setHiddenGames] = useState([]);
 
   useEffect(() => {
     async function loadData() {
@@ -49,6 +57,13 @@ function Home() {
             gymnastics: images.gymnastics || '',
           });
         }
+        
+        // Load hidden games
+        const hiddenRef = doc(db, 'settings', 'hiddenGames');
+        const hiddenSnap = await getDoc(hiddenRef);
+        if (hiddenSnap.exists()) {
+          setHiddenGames(hiddenSnap.data().games || []);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -57,6 +72,9 @@ function Home() {
     
     loadData();
   }, []);
+
+  // Filter out hidden games
+  const visibleGames = Object.keys(games).filter(id => !hiddenGames.includes(id));
 
   return (
     <div className="app">
@@ -67,41 +85,19 @@ function Home() {
         {/* Daily Puzzles */}
         <h2 className="section-title">Daily Puzzles</h2>
         <div className="game-grid">
-          <Link to="/mtg" className="game-card mtg">
-            {gameImages.mtg && (
-              <div className="game-card-image">
-                <img src={gameImages.mtg} alt="Magic: The Gathering" />
+          {visibleGames.map(gameId => (
+            <Link key={gameId} to={`/${gameId}`} className={`game-card ${gameId}`}>
+              {gameImages[gameId] && (
+                <div className="game-card-image">
+                  <img src={gameImages[gameId]} alt={GAME_INFO[gameId].name} />
+                </div>
+              )}
+              <div className="game-card-content">
+                <h2>{GAME_INFO[gameId].name}</h2>
+                <p>{GAME_INFO[gameId].description}</p>
               </div>
-            )}
-            <div className="game-card-content">
-              <h2>Magic: The Gathering</h2>
-              <p>Match cards by color, type, mana value, and more</p>
-            </div>
-          </Link>
-          
-          <Link to="/fab" className="game-card fab">
-            {gameImages.fab && (
-              <div className="game-card-image">
-                <img src={gameImages.fab} alt="Flesh and Blood" />
-              </div>
-            )}
-            <div className="game-card-content">
-              <h2>Flesh and Blood</h2>
-              <p>Match cards by class, pitch, cost, and more</p>
-            </div>
-          </Link>
-          
-          <Link to="/gymnastics" className="game-card gymnastics">
-            {gameImages.gymnastics && (
-              <div className="game-card-image">
-                <img src={gameImages.gymnastics} alt="Gymnastics" />
-              </div>
-            )}
-            <div className="game-card-content">
-              <h2>Gymnastics</h2>
-              <p>Match skills by apparatus, difficulty, and type</p>
-            </div>
-          </Link>
+            </Link>
+          ))}
         </div>
 
         {/* Create Your Own */}

@@ -89,6 +89,9 @@ export function AdminHome() {
   const [savedHiddenCategories, setSavedHiddenCategories] = useState({ mtg: [], fab: [], gymnastics: [] });
   const [savingHidden, setSavingHidden] = useState(false);
   const [expandedGame, setExpandedGame] = useState(null);
+  const [hiddenGames, setHiddenGames] = useState([]);
+  const [savedHiddenGames, setSavedHiddenGames] = useState([]);
+  const [savingGames, setSavingGames] = useState(false);
 
   // Password from environment variable
   const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
@@ -154,6 +157,15 @@ export function AdminHome() {
           });
         }
         
+        // Load hidden games
+        const hiddenGamesRef = doc(db, 'settings', 'hiddenGames');
+        const hiddenGamesSnap = await getDoc(hiddenGamesRef);
+        if (hiddenGamesSnap.exists()) {
+          const games = hiddenGamesSnap.data().games || [];
+          setHiddenGames(games);
+          setSavedHiddenGames(games);
+        }
+        
         setFirebaseStatus('connected');
       } catch (error) {
         console.error('Error loading data:', error);
@@ -214,6 +226,34 @@ export function AdminHome() {
       alert('Failed to save hidden categories.');
     }
     setSavingHidden(false);
+  };
+
+  const hasUnsavedGames = JSON.stringify(hiddenGames.sort()) !== JSON.stringify(savedHiddenGames.sort());
+
+  const toggleGame = (gameId) => {
+    setHiddenGames(prev => {
+      if (prev.includes(gameId)) {
+        return prev.filter(id => id !== gameId);
+      } else {
+        return [...prev, gameId];
+      }
+    });
+  };
+
+  const saveHiddenGames = async () => {
+    setSavingGames(true);
+    try {
+      const hiddenGamesRef = doc(db, 'settings', 'hiddenGames');
+      await setDoc(hiddenGamesRef, {
+        games: hiddenGames,
+        updatedAt: new Date().toISOString(),
+      });
+      setSavedHiddenGames([...hiddenGames]);
+    } catch (error) {
+      console.error('Error saving hidden games:', error);
+      alert('Failed to save hidden games.');
+    }
+    setSavingGames(false);
   };
 
   // Show login screen if not authenticated
@@ -287,6 +327,37 @@ export function AdminHome() {
           {firebaseStatus === 'checking' && 'Checking Firebase connection...'}
           {firebaseStatus === 'connected' && 'Firebase connected'}
           {firebaseStatus === 'error' && 'Firebase offline - check your config'}
+        </div>
+        
+        {/* Game Visibility */}
+        <div className="admin-section">
+          <h3>Game Visibility</h3>
+          <p className="section-hint">Toggle which games appear on the home page</p>
+          
+          <div className="game-visibility-grid">
+            {Object.entries(GAME_CONFIGS).map(([id, config]) => {
+              const isHidden = hiddenGames.includes(id);
+              return (
+                <label key={id} className={`game-visibility-toggle ${id} ${isHidden ? 'hidden' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={!isHidden}
+                    onChange={() => toggleGame(id)}
+                  />
+                  <span className="game-name">{config.name}</span>
+                  <span className="visibility-status">{isHidden ? 'Hidden' : 'Visible'}</span>
+                </label>
+              );
+            })}
+          </div>
+          
+          <button 
+            className="btn-primary save-visibility-btn"
+            onClick={saveHiddenGames}
+            disabled={savingGames || !hasUnsavedGames}
+          >
+            {savingGames ? 'Saving...' : hasUnsavedGames ? 'Save Changes' : 'Saved'}
+          </button>
         </div>
         
         {/* Category Management */}

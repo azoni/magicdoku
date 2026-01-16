@@ -1347,6 +1347,62 @@ button:disabled {
   margin-top: 8px;
 }
 
+/* Game Visibility */
+.game-visibility-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.game-visibility-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-visibility-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.game-visibility-toggle.mtg { border-left: 3px solid #e8b923; }
+.game-visibility-toggle.fab { border-left: 3px solid #ff6b6b; }
+.game-visibility-toggle.gymnastics { border-left: 3px solid #8a4fff; }
+
+.game-visibility-toggle.hidden {
+  opacity: 0.5;
+}
+
+.game-visibility-toggle.hidden .game-name {
+  text-decoration: line-through;
+}
+
+.game-visibility-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.game-visibility-toggle .game-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.game-visibility-toggle .visibility-status {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.save-visibility-btn {
+  margin-top: 8px;
+}
+
 .admin-buttons {
   display: flex;
   gap: 12px;
