@@ -462,13 +462,21 @@ function GameBoard({ game }) {
                 >
                   {card ? (
                     <>
-                      {game.getCardImage(card) && (
+                      {game.getCardImage(card) ? (
                         <img 
                           className="card-image" 
                           src={game.getCardImage(card)} 
                           alt={card.name}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
                         />
-                      )}
+                      ) : null}
+                      <div className="card-placeholder" style={{ display: game.getCardImage(card) ? 'none' : 'flex' }}>
+                        <span className="placeholder-icon">🃏</span>
+                        <span className="placeholder-name">{card.name}</span>
+                      </div>
                       <div className="card-name">{card.name}</div>
                       {gameState.gameOver && topAnswers.length > 0 && (
                         <div className="cell-stats">
@@ -550,6 +558,7 @@ function GameBoard({ game }) {
                     src={game.getCardImage(cardPreview)} 
                     alt={cardPreview.name}
                     className="preview-image"
+                    onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 )}
                 <div className="preview-info">
