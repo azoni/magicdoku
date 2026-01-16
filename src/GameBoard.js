@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { db } from './firebase';
+import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 // Seeded random number generator
 function seededRandom(seed) {
@@ -17,10 +19,15 @@ function shuffleWithSeed(array, seed) {
   return arr;
 }
 
+// Get today's date string for puzzle ID
+function getTodayString() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
 // Get today's seed (changes daily)
 function getDailySeed() {
-  const today = new Date();
-  const dateString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const dateString = getTodayString();
   let hash = 0;
   for (let i = 0; i < dateString.length; i++) {
     const char = dateString.charCodeAt(i);
@@ -79,6 +86,71 @@ async function generatePuzzle(game, seed) {
   return game.getFallbackCategories();
 }
 
+// Firebase: Record a guess
+async function recordGuess(gameId, cellIndex, cardName, isCorrect) {
+  const dateStr = getTodayString();
+  const docId = `${gameId}-${dateStr}`;
+  const cellKey = `cell${cellIndex}`;
+  const cardKey = cardName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  
+  try {
+    const docRef = doc(db, 'guesses', docId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      // Create new document
+      await setDoc(docRef, {
+        gameId,
+        date: dateStr,
+        totalGuesses: 1,
+        [cellKey]: {
+          totalGuesses: 1,
+          correctGuesses: isCorrect ? 1 : 0,
+          cards: {
+            [cardKey]: { name: cardName, count: 1, correct: isCorrect }
+          }
+        }
+      });
+    } else {
+      // Update existing
+      const data = docSnap.data();
+      const cellData = data[cellKey] || { totalGuesses: 0, correctGuesses: 0, cards: {} };
+      const cardData = cellData.cards?.[cardKey] || { name: cardName, count: 0, correct: isCorrect };
+      
+      await updateDoc(docRef, {
+        totalGuesses: increment(1),
+        [`${cellKey}.totalGuesses`]: increment(1),
+        [`${cellKey}.correctGuesses`]: increment(isCorrect ? 1 : 0),
+        [`${cellKey}.cards.${cardKey}`]: {
+          name: cardName,
+          count: cardData.count + 1,
+          correct: isCorrect
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error recording guess:', error);
+  }
+}
+
+// Firebase: Get all stats for today
+async function getAllStats(gameId) {
+  const dateStr = getTodayString();
+  const docId = `${gameId}-${dateStr}`;
+  
+  try {
+    const docRef = doc(db, 'guesses', docId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+  } catch (error) {
+    console.error('Error getting all stats:', error);
+  }
+  return null;
+}
+
 function GameBoard({ game }) {
   const [loading, setLoading] = useState(true);
   const [gameState, setGameState] = useState({
@@ -92,11 +164,10 @@ function GameBoard({ game }) {
     gameOver: false,
   });
   const [message, setMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [guessInput, setGuessInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [stats, setStats] = useState(null);
   
-  const searchTimeoutRef = useRef(null);
   const inputRef = useRef(null);
   
   const gameId = game.config.id;
@@ -118,6 +189,12 @@ function GameBoard({ game }) {
           colCategories: puzzle.colCategories,
           usedCards: new Set(parsed.usedCards || []),
         });
+        
+        // Load stats if game is over
+        if (parsed.gameOver) {
+          const allStats = await getAllStats(gameId);
+          setStats(allStats);
+        }
       } else {
         setGameState({
           rowCategories: puzzle.rowCategories,
@@ -149,43 +226,6 @@ function GameBoard({ game }) {
     }
   }, [gameState, loading, gameId]);
 
-  // Handle search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    if (searchQuery.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    
-    searchTimeoutRef.current = setTimeout(async () => {
-      setSearchLoading(true);
-      
-      const results = await game.autocompleteCards(searchQuery);
-      
-      // For MTG, we need to fetch card details
-      if (gameId === 'mtg') {
-        const names = results.slice(0, 6);
-        const cardPromises = names.map(name => game.getCardByName(name));
-        const cards = await Promise.all(cardPromises);
-        setSuggestions(cards.filter(Boolean));
-      } else {
-        // For FAB, results are already card objects
-        setSuggestions(results.slice(0, 6));
-      }
-      
-      setSearchLoading(false);
-    }, 300);
-    
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery, game, gameId]);
-
   const showMessage = useCallback((text, type, persistent = false) => {
     setMessage({ text, type });
     if (!persistent) {
@@ -197,19 +237,30 @@ function GameBoard({ game }) {
     if (gameState.gameOver || gameState.board[idx] !== null) return;
     
     setGameState(prev => ({ ...prev, selectedCell: idx }));
-    setSearchQuery('');
-    setSuggestions([]);
+    setGuessInput('');
     
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [gameState.gameOver, gameState.board]);
 
-  const makeGuess = useCallback(async (card) => {
-    if (gameState.selectedCell === null || gameState.gameOver) return;
+  const submitGuess = useCallback(async () => {
+    if (gameState.selectedCell === null || gameState.gameOver || !guessInput.trim() || submitting) return;
     
-    const cardName = card.name;
+    setSubmitting(true);
+    const cardName = guessInput.trim();
     
-    if (gameState.usedCards.has(cardName)) {
+    // Check if card already used
+    if (gameState.usedCards.has(cardName.toLowerCase())) {
       showMessage('You already used that card!', 'error');
+      setSubmitting(false);
+      return;
+    }
+    
+    // Get the card
+    const card = await game.getCardByName(cardName);
+    
+    if (!card) {
+      showMessage(`"${cardName}" not found. Check spelling!`, 'error');
+      setSubmitting(false);
       return;
     }
     
@@ -223,12 +274,17 @@ function GameBoard({ game }) {
       game.cardMatchesCategory(card, colCat),
     ]);
     
+    const isCorrect = matchesRow && matchesCol;
+    
+    // Record guess to Firebase
+    await recordGuess(gameId, gameState.selectedCell, card.name, isCorrect);
+    
     setGameState(prev => {
       const newGuesses = prev.guesses + 1;
       const newUsedCards = new Set(prev.usedCards);
       
-      if (matchesRow && matchesCol) {
-        newUsedCards.add(cardName);
+      if (isCorrect) {
+        newUsedCards.add(card.name.toLowerCase());
         const newBoard = [...prev.board];
         newBoard[prev.selectedCell] = card;
         const newScore = prev.score + 1;
@@ -237,7 +293,7 @@ function GameBoard({ game }) {
         if (isWin) {
           showMessage(`🎉 Perfect! Completed in ${newGuesses} guesses!`, 'win', true);
         } else {
-          showMessage(`Correct! ${cardName}`, 'success');
+          showMessage(`Correct! ${card.name}`, 'success');
         }
         
         return {
@@ -254,7 +310,7 @@ function GameBoard({ game }) {
         if (!matchesRow) reason = `Doesn't match "${rowCat.label}"`;
         else if (!matchesCol) reason = `Doesn't match "${colCat.label}"`;
         
-        showMessage(`Wrong! ${cardName} - ${reason}`, 'error');
+        showMessage(`Wrong! ${card.name} - ${reason}`, 'error');
         
         const isGameOver = newGuesses >= 9;
         if (isGameOver) {
@@ -270,9 +326,16 @@ function GameBoard({ game }) {
       }
     });
     
-    setSearchQuery('');
-    setSuggestions([]);
-  }, [gameState, showMessage, game]);
+    setGuessInput('');
+    setSubmitting(false);
+  }, [gameState, guessInput, showMessage, game, gameId, submitting]);
+
+  // Load stats when game ends
+  useEffect(() => {
+    if (gameState.gameOver && !stats) {
+      getAllStats(gameId).then(setStats);
+    }
+  }, [gameState.gameOver, stats, gameId]);
 
   const getShareText = useCallback(() => {
     const emojis = gameState.board.map((cell) => cell ? '🟩' : '⬛');
@@ -291,6 +354,25 @@ function GameBoard({ game }) {
       showMessage('Copied to clipboard!', 'success');
     });
   }, [getShareText, showMessage]);
+
+  // Get top answers for a cell
+  const getTopAnswers = (cellIndex) => {
+    if (!stats) return [];
+    const cellData = stats[`cell${cellIndex}`];
+    if (!cellData?.cards) return [];
+    
+    const totalCorrect = cellData.correctGuesses || 0;
+    if (totalCorrect === 0) return [];
+    
+    return Object.values(cellData.cards)
+      .filter(c => c.correct)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3)
+      .map(c => ({
+        name: c.name,
+        percent: Math.round((c.count / totalCorrect) * 100)
+      }));
+  };
 
   if (loading) {
     return (
@@ -345,6 +427,7 @@ function GameBoard({ game }) {
               const idx = row * 3 + col;
               const card = gameState.board[idx];
               const isSelected = gameState.selectedCell === idx;
+              const topAnswers = gameState.gameOver ? getTopAnswers(idx) : [];
               
               return (
                 <div
@@ -352,7 +435,7 @@ function GameBoard({ game }) {
                   className={`cell ${isSelected ? `selected ${gameId}` : ''} ${card ? 'solved' : ''}`}
                   onClick={() => selectCell(idx)}
                 >
-                  {card && (
+                  {card ? (
                     <>
                       {game.getCardImage(card) && (
                         <img 
@@ -362,8 +445,28 @@ function GameBoard({ game }) {
                         />
                       )}
                       <div className="card-name">{card.name}</div>
+                      {gameState.gameOver && topAnswers.length > 0 && (
+                        <div className="cell-stats">
+                          {topAnswers.map((a, i) => (
+                            <div key={i} className="stat-line">
+                              <span className="stat-percent">{a.percent}%</span>
+                              <span className="stat-name">{a.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </>
-                  )}
+                  ) : gameState.gameOver && topAnswers.length > 0 ? (
+                    <div className="cell-stats missed">
+                      <div className="missed-label">Top Answers:</div>
+                      {topAnswers.map((a, i) => (
+                        <div key={i} className="stat-line">
+                          <span className="stat-percent">{a.percent}%</span>
+                          <span className="stat-name">{a.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -372,7 +475,7 @@ function GameBoard({ game }) {
       </div>
 
       <div className={`input-section ${gameState.selectedCell === null ? 'hidden' : ''}`}>
-        <h3 className={gameId}>Guess a card:</h3>
+        <h3 className={gameId}>Enter a card name:</h3>
         {gameState.selectedCell !== null && (
           <p className="criteria-hint">
             Must match: <strong>{gameState.rowCategories[Math.floor(gameState.selectedCell / 3)]?.label}</strong>
@@ -380,46 +483,28 @@ function GameBoard({ game }) {
             <strong>{gameState.colCategories[gameState.selectedCell % 3]?.label}</strong>
           </p>
         )}
-        <div className="search-container">
+        <form className="guess-form" onSubmit={(e) => { e.preventDefault(); submitGuess(); }}>
           <input
             ref={inputRef}
             type="text"
             className={`search-input ${gameId}`}
-            placeholder="Type a card name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            disabled={gameState.gameOver}
+            placeholder="Type card name and press Enter..."
+            value={guessInput}
+            onChange={(e) => setGuessInput(e.target.value)}
+            disabled={gameState.gameOver || submitting}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
           />
-          
-          {(suggestions.length > 0 || searchLoading) && (
-            <div className="suggestions">
-              {searchLoading ? (
-                <div className="loading-suggestions">Searching...</div>
-              ) : (
-                suggestions
-                  .filter(card => !gameState.usedCards.has(card.name))
-                  .map((card, idx) => {
-                    const displayInfo = game.getCardDisplayInfo(card);
-                    return (
-                      <div
-                        key={idx}
-                        className="suggestion"
-                        onClick={() => makeGuess(card)}
-                      >
-                        {game.getCardImage(card) && (
-                          <img src={game.getCardImage(card)} alt={card.name} />
-                        )}
-                        <div className="suggestion-info">
-                          <div className="suggestion-name">{displayInfo.name}</div>
-                          <div className="suggestion-set">{displayInfo.set}</div>
-                        </div>
-                      </div>
-                    );
-                  })
-              )}
-            </div>
-          )}
-        </div>
+          <button 
+            type="submit" 
+            className={`btn-primary ${gameId}`}
+            disabled={!guessInput.trim() || submitting}
+          >
+            {submitting ? '...' : 'Submit'}
+          </button>
+        </form>
       </div>
 
       <div className="buttons">
@@ -439,9 +524,10 @@ function GameBoard({ game }) {
       <div className="rules">
         <h3 className={gameId}>How to Play</h3>
         <p>
-          Click a cell and name a card that matches <strong>both</strong> the 
-          row and column criteria. You have 9 guesses to fill all 9 cells. 
-          Each card can only be used once! The puzzle changes daily.
+          Click a cell and type a card name that matches <strong>both</strong> the 
+          row and column criteria. No autocomplete — you need to know your cards! 
+          You have 9 guesses to fill all 9 cells. Each card can only be used once. 
+          The puzzle changes daily.
         </p>
       </div>
     </div>

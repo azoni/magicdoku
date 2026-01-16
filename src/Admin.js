@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Import default categories
 import { CATEGORIES as MTG_CATEGORIES, config as mtgConfig } from './games/mtg';
@@ -15,22 +17,46 @@ const GAME_CONFIGS = {
   fab: fabConfig,
 };
 
-// Load categories from localStorage or use defaults
-function loadCategories(gameId) {
-  const saved = localStorage.getItem(`tcgdoku-admin-${gameId}`);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading saved categories:', e);
-    }
-  }
-  return DEFAULT_CATEGORIES[gameId];
+// Strip functions from categories for storage
+function serializeCategories(categories) {
+  const serialized = {};
+  Object.entries(categories).forEach(([key, items]) => {
+    serialized[key] = items.map(item => {
+      const { filter, ...rest } = item;
+      return rest;
+    });
+  });
+  return serialized;
 }
 
-// Save categories to localStorage
-function saveCategories(gameId, categories) {
-  localStorage.setItem(`tcgdoku-admin-${gameId}`, JSON.stringify(categories));
+// Load categories from Firebase
+async function loadCategoriesFromFirebase(gameId) {
+  try {
+    const docRef = doc(db, 'categories', gameId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().categories;
+    }
+  } catch (error) {
+    console.error('Error loading categories from Firebase:', error);
+  }
+  return null;
+}
+
+// Save categories to Firebase
+async function saveCategoriestoFirebase(gameId, categories) {
+  try {
+    const docRef = doc(db, 'categories', gameId);
+    await setDoc(docRef, {
+      gameId,
+      updatedAt: new Date().toISOString(),
+      categories: serializeCategories(categories),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error saving categories to Firebase:', error);
+    return false;
+  }
 }
 
 // Admin Home
@@ -40,7 +66,7 @@ export function AdminHome() {
       <div className="admin-home">
         <Link to="/" className="back-link">← Back to Games</Link>
         <h1>Admin Panel</h1>
-        <p className="admin-subtitle">Manage categories for each game</p>
+        <p className="admin-subtitle">Manage categories for each game (saved to Firebase)</p>
         
         <div className="admin-game-grid">
           {Object.entries(GAME_CONFIGS).map(([id, config]) => (
@@ -55,11 +81,12 @@ export function AdminHome() {
         <div className="admin-section">
           <h3>Data Management</h3>
           <div className="admin-buttons">
-            <button className="btn-secondary" onClick={() => {
+            <button className="btn-secondary" onClick={async () => {
               const data = {};
-              Object.keys(DEFAULT_CATEGORIES).forEach(gameId => {
-                data[gameId] = loadCategories(gameId);
-              });
+              for (const gameId of Object.keys(DEFAULT_CATEGORIES)) {
+                const cats = await loadCategoriesFromFirebase(gameId);
+                data[gameId] = cats || serializeCategories(DEFAULT_CATEGORIES[gameId]);
+              }
               const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -75,17 +102,17 @@ export function AdminHome() {
                 type="file" 
                 accept=".json"
                 style={{ display: 'none' }}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = async (event) => {
                       try {
                         const data = JSON.parse(event.target.result);
-                        Object.entries(data).forEach(([gameId, categories]) => {
-                          saveCategories(gameId, categories);
-                        });
-                        alert('Categories imported successfully! Refresh to see changes.');
+                        for (const [gameId, categories] of Object.entries(data)) {
+                          await saveCategoriestoFirebase(gameId, categories);
+                        }
+                        alert('Categories imported successfully!');
                       } catch (err) {
                         alert('Error importing: ' + err.message);
                       }
@@ -95,11 +122,11 @@ export function AdminHome() {
                 }}
               />
             </label>
-            <button className="btn-danger" onClick={() => {
+            <button className="btn-danger" onClick={async () => {
               if (window.confirm('Reset all categories to defaults? This cannot be undone.')) {
-                Object.keys(DEFAULT_CATEGORIES).forEach(gameId => {
-                  localStorage.removeItem(`tcgdoku-admin-${gameId}`);
-                });
+                for (const gameId of Object.keys(DEFAULT_CATEGORIES)) {
+                  await saveCategoriestoFirebase(gameId, DEFAULT_CATEGORIES[gameId]);
+                }
                 alert('All categories reset to defaults!');
                 window.location.reload();
               }
@@ -107,6 +134,13 @@ export function AdminHome() {
               Reset All to Defaults
             </button>
           </div>
+        </div>
+        
+        <div className="admin-section">
+          <h3>View Stats</h3>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+            View guess statistics in your Firebase console under the "guesses" collection.
+          </p>
         </div>
       </div>
     </div>
@@ -122,6 +156,8 @@ export function CategoryEditor() {
   const [editingItem, setEditingItem] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [message, setMessage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const config = GAME_CONFIGS[gameId];
 
@@ -130,7 +166,19 @@ export function CategoryEditor() {
       navigate('/admin');
       return;
     }
-    setCategories(loadCategories(gameId));
+    
+    async function loadCategories() {
+      setLoading(true);
+      const firebaseCats = await loadCategoriesFromFirebase(gameId);
+      if (firebaseCats) {
+        setCategories(firebaseCats);
+      } else {
+        setCategories(serializeCategories(DEFAULT_CATEGORIES[gameId]));
+      }
+      setLoading(false);
+    }
+    
+    loadCategories();
   }, [gameId, config, navigate]);
 
   const showMessage = (text, type = 'success') => {
@@ -138,9 +186,15 @@ export function CategoryEditor() {
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleSave = () => {
-    saveCategories(gameId, categories);
-    showMessage('Categories saved!');
+  const handleSave = async () => {
+    setSaving(true);
+    const success = await saveCategoriestoFirebase(gameId, categories);
+    setSaving(false);
+    if (success) {
+      showMessage('Categories saved to Firebase!');
+    } else {
+      showMessage('Error saving categories', 'error');
+    }
   };
 
   const handleAddCategory = () => {
@@ -187,8 +241,8 @@ export function CategoryEditor() {
   };
 
   const handleSaveItem = () => {
-    if (!editingItem.id || !editingItem.label || !editingItem.query) {
-      showMessage('ID, Label, and Query are required', 'error');
+    if (!editingItem.id || !editingItem.label) {
+      showMessage('ID and Label are required', 'error');
       return;
     }
 
@@ -196,16 +250,13 @@ export function CategoryEditor() {
     const newItem = {
       id: editingItem.id,
       label: editingItem.label,
-      query: editingItem.query,
     };
     
+    if (editingItem.query) {
+      newItem.query = editingItem.query;
+    }
     if (editingItem.colorClass) {
       newItem.colorClass = editingItem.colorClass;
-    }
-    
-    // For FAB, also save apiParam
-    if (gameId === 'fab' && editingItem.apiParam) {
-      newItem.apiParam = editingItem.apiParam;
     }
 
     if (editingItem.isNew) {
@@ -220,15 +271,33 @@ export function CategoryEditor() {
     showMessage(editingItem.isNew ? 'Item added' : 'Item updated');
   };
 
-  const handleResetGame = () => {
+  const handleResetGame = async () => {
     if (window.confirm(`Reset ${config.name} categories to defaults?`)) {
-      localStorage.removeItem(`tcgdoku-admin-${gameId}`);
-      setCategories(DEFAULT_CATEGORIES[gameId]);
+      const defaults = serializeCategories(DEFAULT_CATEGORIES[gameId]);
+      setCategories(defaults);
+      await saveCategoriestoFirebase(gameId, DEFAULT_CATEGORIES[gameId]);
       showMessage('Reset to defaults');
     }
   };
 
   if (!config) return null;
+
+  if (loading) {
+    return (
+      <div className="app">
+        <div className="admin-editor">
+          <header>
+            <Link to="/admin" className="back-link">← Admin Home</Link>
+            <h1 className={`${gameId}-title`}>{config.name} Categories</h1>
+          </header>
+          <div className="loading">
+            <div className={`spinner ${gameId}`}></div>
+            <p>Loading categories...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -243,8 +312,12 @@ export function CategoryEditor() {
         )}
 
         <div className="admin-actions">
-          <button className={`btn-primary ${gameId}`} onClick={handleSave}>
-            💾 Save Changes
+          <button 
+            className={`btn-primary ${gameId}`} 
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : '💾 Save to Firebase'}
           </button>
           <button className="btn-secondary" onClick={handleResetGame}>
             Reset to Defaults
@@ -291,10 +364,10 @@ export function CategoryEditor() {
             
             <div className="category-items">
               {items.map((item, index) => (
-                <div key={item.id} className="category-item">
+                <div key={item.id || index} className="category-item">
                   <div className="item-info">
                     <span className="item-label">{item.label}</span>
-                    <span className="item-query">{item.query}</span>
+                    {item.query && <span className="item-query">{item.query}</span>}
                     {item.colorClass && (
                       <span className={`item-color ${item.colorClass}`}>●</span>
                     )}
@@ -349,12 +422,12 @@ export function CategoryEditor() {
               </div>
               
               <div className="form-group">
-                <label>Query ({gameId === 'mtg' ? 'Scryfall syntax' : 'FaBDB param'})</label>
+                <label>Query ({gameId === 'mtg' ? 'Scryfall syntax' : 'filter key'})</label>
                 <input
                   type="text"
-                  value={editingItem.query}
+                  value={editingItem.query || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, query: e.target.value })}
-                  placeholder={gameId === 'mtg' ? 'e.g., o:flying, c:r, r:mythic' : 'e.g., class=ninja, pitch=1'}
+                  placeholder={gameId === 'mtg' ? 'e.g., keyword:flying, c:r' : 'e.g., pitch=1'}
                 />
               </div>
               
@@ -383,6 +456,3 @@ export function CategoryEditor() {
     </div>
   );
 }
-
-// Export the loadCategories function for use in game files
-export { loadCategories, DEFAULT_CATEGORIES };

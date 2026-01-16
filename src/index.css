@@ -318,6 +318,67 @@ h1.fab-title {
 .search-input:focus { box-shadow: 0 0 0 3px rgba(248, 228, 92, 0.5); }
 .search-input.fab:focus { box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.5); }
 
+/* Guess Form */
+.guess-form {
+  display: flex;
+  gap: 12px;
+}
+
+.guess-form .search-input {
+  flex: 1;
+}
+
+.guess-form button {
+  white-space: nowrap;
+}
+
+/* Cell Stats */
+.cell-stats {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 6px;
+  font-size: 0.6rem;
+  max-height: 60%;
+  overflow: hidden;
+}
+
+.cell-stats.missed {
+  position: relative;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  padding: 8px;
+  max-height: none;
+}
+
+.missed-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-line {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.stat-percent {
+  font-weight: 700;
+  color: #f8e45c;
+  min-width: 32px;
+}
+
+.stat-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 /* Suggestions */
 .suggestions {
   position: absolute;
