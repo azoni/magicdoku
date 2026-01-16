@@ -5,7 +5,7 @@ import { AdminHome, CategoryEditor } from './Admin';
 import PuzzleCreator from './PuzzleCreator';
 import CustomPuzzle from './CustomPuzzle';
 import { db } from './firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 
 // Import game configs
 import * as mtg from './games/mtg';
@@ -20,10 +20,12 @@ const games = {
 function Home() {
   const [communityPuzzles, setCommunityPuzzles] = useState([]);
   const [loadingPuzzles, setLoadingPuzzles] = useState(true);
+  const [gameImages, setGameImages] = useState({ mtg: '', fab: '' });
 
   useEffect(() => {
-    async function loadCommunityPuzzles() {
+    async function loadData() {
       try {
+        // Load community puzzles
         const puzzlesRef = collection(db, 'customPuzzles');
         const q = query(puzzlesRef, orderBy('createdAt', 'desc'), limit(6));
         const snapshot = await getDocs(q);
@@ -33,13 +35,21 @@ function Home() {
           puzzles.push({ id: doc.id, ...doc.data() });
         });
         setCommunityPuzzles(puzzles);
+        
+        // Load game images
+        const settingsRef = doc(db, 'settings', 'gameImages');
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          const images = settingsSnap.data();
+          setGameImages({ mtg: images.mtg || '', fab: images.fab || '' });
+        }
       } catch (error) {
-        console.error('Error loading community puzzles:', error);
+        console.error('Error loading data:', error);
       }
       setLoadingPuzzles(false);
     }
     
-    loadCommunityPuzzles();
+    loadData();
   }, []);
 
   return (
@@ -52,13 +62,27 @@ function Home() {
         <h2 className="section-title">Daily Puzzles</h2>
         <div className="game-grid">
           <Link to="/mtg" className="game-card mtg">
-            <h2>Magic: The Gathering</h2>
-            <p>Match cards by color, type, mana value, and more</p>
+            {gameImages.mtg && (
+              <div className="game-card-image">
+                <img src={gameImages.mtg} alt="Magic: The Gathering" />
+              </div>
+            )}
+            <div className="game-card-content">
+              <h2>Magic: The Gathering</h2>
+              <p>Match cards by color, type, mana value, and more</p>
+            </div>
           </Link>
           
           <Link to="/fab" className="game-card fab">
-            <h2>Flesh and Blood</h2>
-            <p>Match cards by class, pitch, cost, and more</p>
+            {gameImages.fab && (
+              <div className="game-card-image">
+                <img src={gameImages.fab} alt="Flesh and Blood" />
+              </div>
+            )}
+            <div className="game-card-content">
+              <h2>Flesh and Blood</h2>
+              <p>Match cards by class, pitch, cost, and more</p>
+            </div>
           </Link>
         </div>
 

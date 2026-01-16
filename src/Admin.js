@@ -79,6 +79,9 @@ export function AdminHome() {
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
+  const [gameImages, setGameImages] = useState({ mtg: '', fab: '' });
+  const [imageInputs, setImageInputs] = useState({ mtg: '', fab: '' });
+  const [savingImages, setSavingImages] = useState(false);
 
   // Password from environment variable
   const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
@@ -104,9 +107,10 @@ export function AdminHome() {
   useEffect(() => {
     if (!authenticated) return;
     
-    async function loadStats() {
+    async function loadData() {
       setLoading(true);
       try {
+        // Load stats
         const guessesRef = collection(db, 'guesses');
         const q = query(guessesRef, orderBy('date', 'desc'));
         const snapshot = await getDocs(q);
@@ -116,16 +120,45 @@ export function AdminHome() {
           data.push({ id: doc.id, ...doc.data() });
         });
         setStats(data);
+        
+        // Load game images
+        const settingsRef = doc(db, 'settings', 'gameImages');
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          const images = settingsSnap.data();
+          setGameImages({ mtg: images.mtg || '', fab: images.fab || '' });
+          setImageInputs({ mtg: images.mtg || '', fab: images.fab || '' });
+        }
+        
         setFirebaseStatus('connected');
       } catch (error) {
-        console.error('Error loading stats:', error);
+        console.error('Error loading data:', error);
         setFirebaseStatus('error');
       }
       setLoading(false);
     }
     
-    loadStats();
+    loadData();
   }, [authenticated]);
+
+  const saveGameImages = async () => {
+    setSavingImages(true);
+    try {
+      const settingsRef = doc(db, 'settings', 'gameImages');
+      await setDoc(settingsRef, {
+        mtg: imageInputs.mtg,
+        fab: imageInputs.fab,
+        updatedAt: new Date().toISOString(),
+      });
+      setGameImages({ ...imageInputs });
+    } catch (error) {
+      console.error('Error saving images:', error);
+      alert('Failed to save images.');
+    }
+    setSavingImages(false);
+  };
+
+  const hasUnsavedChanges = gameImages.mtg !== imageInputs.mtg || gameImages.fab !== imageInputs.fab;
 
   // Show login screen if not authenticated
   if (!authenticated) {
@@ -135,7 +168,7 @@ export function AdminHome() {
         <div className="app">
           <div className="admin-login">
             <Link to="/" className="back-link">← Back to Games</Link>
-            <h1>🔒 Admin Panel</h1>
+            <h1>Admin Panel</h1>
             <p className="error-text">Admin password not configured. Set REACT_APP_ADMIN_PASSWORD in environment variables.</p>
           </div>
         </div>
@@ -146,7 +179,7 @@ export function AdminHome() {
       <div className="app">
         <div className="admin-login">
           <Link to="/" className="back-link">← Back to Games</Link>
-          <h1>🔒 Admin Panel</h1>
+          <h1>Admin Panel</h1>
           <form onSubmit={handleLogin} className="login-form">
             <input
               type="password"
@@ -195,9 +228,9 @@ export function AdminHome() {
         
         {/* Firebase Status */}
         <div className={`firebase-status ${firebaseStatus}`}>
-          {firebaseStatus === 'checking' && '🔄 Checking Firebase connection...'}
-          {firebaseStatus === 'connected' && '✅ Firebase connected'}
-          {firebaseStatus === 'error' && '❌ Firebase offline - check your config'}
+          {firebaseStatus === 'checking' && 'Checking Firebase connection...'}
+          {firebaseStatus === 'connected' && 'Firebase connected'}
+          {firebaseStatus === 'error' && 'Firebase offline - check your config'}
         </div>
         
         {/* Category Management */}
@@ -206,7 +239,6 @@ export function AdminHome() {
           <div className="admin-game-grid">
             {Object.entries(GAME_CONFIGS).map(([id, config]) => (
               <Link key={id} to={`/admin/${id}`} className={`admin-game-card ${id}`}>
-                <div className="icon">{config.emoji}</div>
                 <h2>{config.name}</h2>
                 <p>Edit categories</p>
               </Link>
@@ -214,9 +246,50 @@ export function AdminHome() {
           </div>
         </div>
 
+        {/* Game Images */}
+        <div className="admin-section">
+          <h3>Game Card Images</h3>
+          <p className="section-hint">Add image URLs for the game cards on the home page</p>
+          
+          <div className="image-management">
+            {Object.entries(GAME_CONFIGS).map(([id, config]) => (
+              <div key={id} className="image-row">
+                <div className="image-preview">
+                  {imageInputs[id] ? (
+                    <img 
+                      src={imageInputs[id]} 
+                      alt={config.name}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="no-image">No image</div>
+                  )}
+                </div>
+                <div className="image-input">
+                  <label>{config.name}</label>
+                  <input
+                    type="text"
+                    placeholder="Enter image URL..."
+                    value={imageInputs[id]}
+                    onChange={(e) => setImageInputs(prev => ({ ...prev, [id]: e.target.value }))}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button 
+            className="btn-primary save-images-btn"
+            onClick={saveGameImages}
+            disabled={savingImages || !hasUnsavedChanges}
+          >
+            {savingImages ? 'Saving...' : hasUnsavedChanges ? 'Save Images' : 'Saved'}
+          </button>
+        </div>
+
         {/* Stats Dashboard */}
         <div className="admin-section">
-          <h3>📊 Stats Dashboard</h3>
+          <h3>Stats Dashboard</h3>
           
           <div className="admin-filters">
             <div className="filter-group">
