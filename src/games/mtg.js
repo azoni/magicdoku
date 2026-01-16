@@ -65,12 +65,12 @@ export const CATEGORIES = {
     { id: 'mythic', label: 'Mythic', query: 'r:mythic' },
   ],
   keywords: [
-    { id: 'flying', label: 'Flying', query: 'o:flying t:creature' },
-    { id: 'trample', label: 'Trample', query: 'o:trample' },
-    { id: 'deathtouch', label: 'Deathtouch', query: 'o:deathtouch' },
-    { id: 'lifelink', label: 'Lifelink', query: 'o:lifelink' },
-    { id: 'haste', label: 'Haste', query: 'o:haste' },
-    { id: 'flash', label: 'Flash', query: 'o:flash' },
+    { id: 'flying', label: 'Flying', query: 'keyword:flying' },
+    { id: 'trample', label: 'Trample', query: 'keyword:trample' },
+    { id: 'deathtouch', label: 'Deathtouch', query: 'keyword:deathtouch' },
+    { id: 'lifelink', label: 'Lifelink', query: 'keyword:lifelink' },
+    { id: 'haste', label: 'Haste', query: 'keyword:haste' },
+    { id: 'flash', label: 'Flash', query: 'keyword:flash' },
   ],
   stats: [
     { id: 'power4plus', label: 'Power ≥ 4', query: 'pow>=4' },
