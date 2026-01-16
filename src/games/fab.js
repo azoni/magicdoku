@@ -197,10 +197,13 @@ export async function cardMatchesCategory(card, category) {
 }
 
 export function getCardImage(card) {
-  // Get image from default or first printing
-  if (card.defaultImage) return card.defaultImage;
-  if (card.printings && card.printings.length > 0) {
-    return card.printings[0].image;
+  // Use defaultImage or first printing identifier
+  const imageId = card.defaultImage || card.printings?.[0]?.identifier;
+  if (imageId) {
+    // Clean up the image ID (remove any .width-450 suffix if present)
+    const cleanId = imageId.replace('.width-450', '');
+    // Use dhhim4ltzu1pj.cloudfront.net which is the FaBDB CDN
+    return `https://dhhim4ltzu1pj.cloudfront.net/media/images/${cleanId}.width-450.png`;
   }
   return null;
 }

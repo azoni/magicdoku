@@ -19,10 +19,10 @@ function shuffleWithSeed(array, seed) {
   return arr;
 }
 
-// Get today's date string for puzzle ID
+// Get today's date string for puzzle ID (UTC to ensure same puzzle globally)
 function getTodayString() {
   const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
 }
 
 // Get today's seed (changes daily)
@@ -275,7 +275,9 @@ function GameBoard({ game }) {
     if (gameState.selectedCell === null || gameState.gameOver || !guessInput.trim() || submitting) return;
     
     // CHEAT CODE - remove later
-    const isCheat = guessInput.trim().toLowerCase() === 'thisansweriscorrect';
+    const cheatInput = guessInput.trim().toLowerCase();
+    const isCheat = cheatInput === 'thisansweriscorrect' || cheatInput === 'cheat' || cheatInput === 'win';
+    console.log('Submit:', { input: guessInput, isCheat, hasPreview: !!cardPreview });
     
     if (!cardPreview && !isCheat) {
       showMessage('Card not found. Check spelling!', 'error');
@@ -285,7 +287,7 @@ function GameBoard({ game }) {
     setSubmitting(true);
     
     // For cheat, create a fake card
-    const card = isCheat ? { name: `Cheat Card #${gameState.selectedCell + 1}` } : cardPreview;
+    const card = isCheat ? { name: `✓ Cell ${gameState.selectedCell + 1}` } : cardPreview;
     const isCorrect = isCheat ? true : await (async () => {
       const row = Math.floor(gameState.selectedCell / 3);
       const col = gameState.selectedCell % 3;
@@ -528,7 +530,7 @@ function GameBoard({ game }) {
           <button 
             type="submit" 
             className={`btn-primary ${gameId}`}
-            disabled={!guessInput.trim() || submitting || (!cardPreview && guessInput.trim().toLowerCase() !== 'thisansweriscorrect')}
+            disabled={!guessInput.trim() || submitting || (!cardPreview && !['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase()))}
           >
             {submitting ? '...' : 'Submit'}
           </button>
@@ -537,7 +539,7 @@ function GameBoard({ game }) {
         {/* Card Preview */}
         {guessInput.length >= 3 && (
           <div className="card-preview-container">
-            {guessInput.trim().toLowerCase() === 'thisansweriscorrect' ? (
+            {['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase()) ? (
               <div className="card-preview found">
                 <div className="preview-info">
                   <span className="preview-name">🎮 CHEAT MODE</span>
