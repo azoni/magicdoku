@@ -167,8 +167,11 @@ function GameBoard({ game }) {
   const [guessInput, setGuessInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [stats, setStats] = useState(null);
+  const [cardPreview, setCardPreview] = useState(null);
+  const [lookingUp, setLookingUp] = useState(false);
   
   const inputRef = useRef(null);
+  const lookupTimeout = useRef(null);
   
   const gameId = game.config.id;
 
@@ -238,46 +241,69 @@ function GameBoard({ game }) {
     
     setGameState(prev => ({ ...prev, selectedCell: idx }));
     setGuessInput('');
+    setCardPreview(null);
     
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [gameState.gameOver, gameState.board]);
 
+  // Lookup card as user types (debounced)
+  useEffect(() => {
+    if (lookupTimeout.current) {
+      clearTimeout(lookupTimeout.current);
+    }
+    
+    if (!guessInput.trim() || guessInput.length < 3) {
+      setCardPreview(null);
+      return;
+    }
+    
+    setLookingUp(true);
+    lookupTimeout.current = setTimeout(async () => {
+      const card = await game.getCardByName(guessInput.trim());
+      setCardPreview(card);
+      setLookingUp(false);
+    }, 300);
+    
+    return () => {
+      if (lookupTimeout.current) {
+        clearTimeout(lookupTimeout.current);
+      }
+    };
+  }, [guessInput, game]);
+
   const submitGuess = useCallback(async () => {
     if (gameState.selectedCell === null || gameState.gameOver || !guessInput.trim() || submitting) return;
     
+    // CHEAT CODE - remove later
+    const isCheat = guessInput.trim().toLowerCase() === 'thisansweriscorrect';
+    
+    if (!cardPreview && !isCheat) {
+      showMessage('Card not found. Check spelling!', 'error');
+      return;
+    }
+    
     setSubmitting(true);
-    const cardName = guessInput.trim();
     
-    // Check if card already used
-    if (gameState.usedCards.has(cardName.toLowerCase())) {
-      showMessage('You already used that card!', 'error');
-      setSubmitting(false);
-      return;
+    // For cheat, create a fake card
+    const card = isCheat ? { name: `Cheat Card #${gameState.selectedCell + 1}` } : cardPreview;
+    const isCorrect = isCheat ? true : await (async () => {
+      const row = Math.floor(gameState.selectedCell / 3);
+      const col = gameState.selectedCell % 3;
+      const rowCat = gameState.rowCategories[row];
+      const colCat = gameState.colCategories[col];
+      
+      const [matchesRow, matchesCol] = await Promise.all([
+        game.cardMatchesCategory(card, rowCat),
+        game.cardMatchesCategory(card, colCat),
+      ]);
+      
+      return matchesRow && matchesCol;
+    })();
+    
+    // Record guess to Firebase (skip for cheat)
+    if (!isCheat) {
+      await recordGuess(gameId, gameState.selectedCell, card.name, isCorrect);
     }
-    
-    // Get the card
-    const card = await game.getCardByName(cardName);
-    
-    if (!card) {
-      showMessage(`"${cardName}" not found. Check spelling!`, 'error');
-      setSubmitting(false);
-      return;
-    }
-    
-    const row = Math.floor(gameState.selectedCell / 3);
-    const col = gameState.selectedCell % 3;
-    const rowCat = gameState.rowCategories[row];
-    const colCat = gameState.colCategories[col];
-    
-    const [matchesRow, matchesCol] = await Promise.all([
-      game.cardMatchesCategory(card, rowCat),
-      game.cardMatchesCategory(card, colCat),
-    ]);
-    
-    const isCorrect = matchesRow && matchesCol;
-    
-    // Record guess to Firebase
-    await recordGuess(gameId, gameState.selectedCell, card.name, isCorrect);
     
     setGameState(prev => {
       const newGuesses = prev.guesses + 1;
@@ -293,7 +319,7 @@ function GameBoard({ game }) {
         if (isWin) {
           showMessage(`🎉 Perfect! Completed in ${newGuesses} guesses!`, 'win', true);
         } else {
-          showMessage(`Correct! ${card.name}`, 'success');
+          showMessage(isCheat ? '🎮 Cheat activated!' : `Correct! ${card.name}`, 'success');
         }
         
         return {
@@ -306,11 +332,12 @@ function GameBoard({ game }) {
           gameOver: isWin || newGuesses >= 9,
         };
       } else {
-        let reason = '';
-        if (!matchesRow) reason = `Doesn't match "${rowCat.label}"`;
-        else if (!matchesCol) reason = `Doesn't match "${colCat.label}"`;
+        const row = Math.floor(prev.selectedCell / 3);
+        const col = prev.selectedCell % 3;
+        const rowCat = prev.rowCategories[row];
+        const colCat = prev.colCategories[col];
         
-        showMessage(`Wrong! ${card.name} - ${reason}`, 'error');
+        showMessage(`Wrong! ${card.name} - Doesn't match criteria`, 'error');
         
         const isGameOver = newGuesses >= 9;
         if (isGameOver) {
@@ -327,8 +354,9 @@ function GameBoard({ game }) {
     });
     
     setGuessInput('');
+    setCardPreview(null);
     setSubmitting(false);
-  }, [gameState, guessInput, showMessage, game, gameId, submitting]);
+  }, [gameState, guessInput, showMessage, game, gameId, submitting, cardPreview]);
 
   // Load stats when game ends
   useEffect(() => {
@@ -487,7 +515,7 @@ function GameBoard({ game }) {
           <input
             ref={inputRef}
             type="text"
-            className={`search-input ${gameId}`}
+            className={`search-input ${gameId} ${cardPreview ? 'valid' : ''}`}
             placeholder="Type card name and press Enter..."
             value={guessInput}
             onChange={(e) => setGuessInput(e.target.value)}
@@ -500,11 +528,45 @@ function GameBoard({ game }) {
           <button 
             type="submit" 
             className={`btn-primary ${gameId}`}
-            disabled={!guessInput.trim() || submitting}
+            disabled={!guessInput.trim() || submitting || (!cardPreview && guessInput.trim().toLowerCase() !== 'thisansweriscorrect')}
           >
             {submitting ? '...' : 'Submit'}
           </button>
         </form>
+        
+        {/* Card Preview */}
+        {guessInput.length >= 3 && (
+          <div className="card-preview-container">
+            {guessInput.trim().toLowerCase() === 'thisansweriscorrect' ? (
+              <div className="card-preview found">
+                <div className="preview-info">
+                  <span className="preview-name">🎮 CHEAT MODE</span>
+                  <span className="preview-hint">Press Enter to auto-win this cell</span>
+                </div>
+              </div>
+            ) : lookingUp ? (
+              <div className="card-preview loading">Searching...</div>
+            ) : cardPreview ? (
+              <div className="card-preview found">
+                {game.getCardImage(cardPreview) && (
+                  <img 
+                    src={game.getCardImage(cardPreview)} 
+                    alt={cardPreview.name}
+                    className="preview-image"
+                  />
+                )}
+                <div className="preview-info">
+                  <span className="preview-name">✓ {cardPreview.name}</span>
+                  <span className="preview-hint">Press Enter to submit</span>
+                </div>
+              </div>
+            ) : (
+              <div className="card-preview not-found">
+                ✗ No card found matching "{guessInput}"
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="buttons">
