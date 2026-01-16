@@ -85,6 +85,10 @@ export function AdminHome() {
   const [gameImages, setGameImages] = useState({ mtg: '', fab: '', gymnastics: '' });
   const [imageInputs, setImageInputs] = useState({ mtg: '', fab: '', gymnastics: '' });
   const [savingImages, setSavingImages] = useState(false);
+  const [hiddenCategories, setHiddenCategories] = useState({ mtg: [], fab: [], gymnastics: [] });
+  const [savedHiddenCategories, setSavedHiddenCategories] = useState({ mtg: [], fab: [], gymnastics: [] });
+  const [savingHidden, setSavingHidden] = useState(false);
+  const [expandedGame, setExpandedGame] = useState(null);
 
   // Password from environment variable
   const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
@@ -133,6 +137,23 @@ export function AdminHome() {
           setImageInputs({ mtg: images.mtg || '', fab: images.fab || '', gymnastics: images.gymnastics || '' });
         }
         
+        // Load hidden categories
+        const hiddenRef = doc(db, 'settings', 'hiddenCategories');
+        const hiddenSnap = await getDoc(hiddenRef);
+        if (hiddenSnap.exists()) {
+          const hidden = hiddenSnap.data();
+          setHiddenCategories({ 
+            mtg: hidden.mtg || [], 
+            fab: hidden.fab || [], 
+            gymnastics: hidden.gymnastics || [] 
+          });
+          setSavedHiddenCategories({ 
+            mtg: hidden.mtg || [], 
+            fab: hidden.fab || [], 
+            gymnastics: hidden.gymnastics || [] 
+          });
+        }
+        
         setFirebaseStatus('connected');
       } catch (error) {
         console.error('Error loading data:', error);
@@ -163,6 +184,37 @@ export function AdminHome() {
   };
 
   const hasUnsavedChanges = gameImages.mtg !== imageInputs.mtg || gameImages.fab !== imageInputs.fab || gameImages.gymnastics !== imageInputs.gymnastics;
+
+  const hasUnsavedHidden = JSON.stringify(hiddenCategories) !== JSON.stringify(savedHiddenCategories);
+
+  const toggleCategory = (gameId, categoryId) => {
+    setHiddenCategories(prev => {
+      const current = prev[gameId] || [];
+      if (current.includes(categoryId)) {
+        return { ...prev, [gameId]: current.filter(id => id !== categoryId) };
+      } else {
+        return { ...prev, [gameId]: [...current, categoryId] };
+      }
+    });
+  };
+
+  const saveHiddenCategories = async () => {
+    setSavingHidden(true);
+    try {
+      const hiddenRef = doc(db, 'settings', 'hiddenCategories');
+      await setDoc(hiddenRef, {
+        mtg: hiddenCategories.mtg,
+        fab: hiddenCategories.fab,
+        gymnastics: hiddenCategories.gymnastics,
+        updatedAt: new Date().toISOString(),
+      });
+      setSavedHiddenCategories({ ...hiddenCategories });
+    } catch (error) {
+      console.error('Error saving hidden categories:', error);
+      alert('Failed to save hidden categories.');
+    }
+    setSavingHidden(false);
+  };
 
   // Show login screen if not authenticated
   if (!authenticated) {
@@ -288,6 +340,67 @@ export function AdminHome() {
             disabled={savingImages || !hasUnsavedChanges}
           >
             {savingImages ? 'Saving...' : hasUnsavedChanges ? 'Save Images' : 'Saved'}
+          </button>
+        </div>
+
+        {/* Hidden Categories */}
+        <div className="admin-section">
+          <h3>Hidden Categories</h3>
+          <p className="section-hint">Toggle categories off to exclude them from daily puzzles</p>
+          
+          <div className="hidden-categories-management">
+            {Object.entries(GAME_CONFIGS).map(([gameId, config]) => {
+              const categories = DEFAULT_CATEGORIES[gameId] || {};
+              const hiddenCount = (hiddenCategories[gameId] || []).length;
+              
+              return (
+                <div key={gameId} className="hidden-game-section">
+                  <button 
+                    className={`hidden-game-header ${gameId}`}
+                    onClick={() => setExpandedGame(expandedGame === gameId ? null : gameId)}
+                  >
+                    <span>{config.name}</span>
+                    <span className="hidden-count">
+                      {hiddenCount > 0 ? `${hiddenCount} hidden` : 'All visible'}
+                    </span>
+                    <span className="expand-icon">{expandedGame === gameId ? '▼' : '▶'}</span>
+                  </button>
+                  
+                  {expandedGame === gameId && (
+                    <div className="category-toggles">
+                      {Object.entries(categories).map(([groupName, groupCats]) => (
+                        <div key={groupName} className="category-group">
+                          <div className="category-group-name">{groupName}</div>
+                          <div className="category-items">
+                            {groupCats.map(cat => {
+                              const isHidden = (hiddenCategories[gameId] || []).includes(cat.id);
+                              return (
+                                <label key={cat.id} className={`category-toggle ${isHidden ? 'hidden' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!isHidden}
+                                    onChange={() => toggleCategory(gameId, cat.id)}
+                                  />
+                                  <span className="category-label">{cat.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          <button 
+            className="btn-primary save-hidden-btn"
+            onClick={saveHiddenCategories}
+            disabled={savingHidden || !hasUnsavedHidden}
+          >
+            {savingHidden ? 'Saving...' : hasUnsavedHidden ? 'Save Changes' : 'Saved'}
           </button>
         </div>
 

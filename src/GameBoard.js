@@ -47,8 +47,14 @@ function getFormattedDate() {
 }
 
 // Puzzle generation
-async function generatePuzzle(game, seed) {
-  const allCategories = game.getAllCategories();
+async function generatePuzzle(game, seed, hiddenCategoryIds = []) {
+  let allCategories = game.getAllCategories();
+  
+  // Filter out hidden categories
+  if (hiddenCategoryIds.length > 0) {
+    allCategories = allCategories.filter(cat => !hiddenCategoryIds.includes(cat.id));
+  }
+  
   const shuffled = shuffleWithSeed(allCategories, seed);
   
   let attempts = 0;
@@ -180,7 +186,20 @@ function GameBoard({ game }) {
     async function initGame() {
       setLoading(true);
       const seed = getDailySeed();
-      const puzzle = await generatePuzzle(game, seed);
+      
+      // Load hidden categories from Firebase
+      let hiddenCategoryIds = [];
+      try {
+        const hiddenRef = doc(db, 'settings', 'hiddenCategories');
+        const hiddenSnap = await getDoc(hiddenRef);
+        if (hiddenSnap.exists()) {
+          hiddenCategoryIds = hiddenSnap.data()[gameId] || [];
+        }
+      } catch (error) {
+        console.log('Could not load hidden categories:', error.message);
+      }
+      
+      const puzzle = await generatePuzzle(game, seed, hiddenCategoryIds);
       
       // Try to load saved state
       const savedState = localStorage.getItem(`tcgdoku-${gameId}-${seed}`);
