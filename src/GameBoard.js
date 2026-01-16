@@ -355,12 +355,16 @@ function GameBoard({ game }) {
     setSubmitting(false);
   }, [gameState, guessInput, showMessage, game, gameId, submitting, cardPreview]);
 
-  // Load stats when game ends
+  // Load stats when game ends (with delay to ensure Firebase sync)
   useEffect(() => {
-    if (gameState.gameOver && !stats) {
-      getAllStats(gameId).then(setStats);
+    if (gameState.gameOver) {
+      // Small delay to allow Firebase to sync the last guess
+      const timer = setTimeout(() => {
+        getAllStats(gameId).then(setStats);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [gameState.gameOver, stats, gameId]);
+  }, [gameState.gameOver, gameId]);
 
   const getShareText = useCallback(() => {
     const emojis = gameState.board.map((cell) => cell ? '🟩' : '⬛');
@@ -395,7 +399,9 @@ function GameBoard({ game }) {
       .slice(0, 3)
       .map(c => ({
         name: c.name,
-        percent: Math.round((c.count / totalCorrect) * 100)
+        percent: Math.round((c.count / totalCorrect) * 100),
+        count: c.count,
+        total: totalCorrect,
       }));
   };
 
@@ -426,6 +432,12 @@ function GameBoard({ game }) {
         <div className={`stat ${gameId}`}>Guesses: <span>{gameState.guesses}</span>/9</div>
         <div className={`stat ${gameId}`}>Score: <span>{gameState.score}</span>/9</div>
       </div>
+
+      {gameState.gameOver && stats && (
+        <div className="total-plays">
+          📊 {stats.totalGuesses || 0} total guesses today
+        </div>
+      )}
 
       {message && (
         <div className={`message ${message.type} ${gameId}`}>
@@ -481,7 +493,7 @@ function GameBoard({ game }) {
                       {gameState.gameOver && topAnswers.length > 0 && (
                         <div className="cell-stats">
                           {topAnswers.map((a, i) => (
-                            <div key={i} className="stat-line">
+                            <div key={i} className="stat-line" title={`${a.count} of ${a.total} players`}>
                               <span className="stat-percent">{a.percent}%</span>
                               <span className="stat-name">{a.name}</span>
                             </div>
@@ -493,7 +505,7 @@ function GameBoard({ game }) {
                     <div className="cell-stats missed">
                       <div className="missed-label">Top Answers:</div>
                       {topAnswers.map((a, i) => (
-                        <div key={i} className="stat-line">
+                        <div key={i} className="stat-line" title={`${a.count} of ${a.total} players`}>
                           <span className="stat-percent">{a.percent}%</span>
                           <span className="stat-name">{a.name}</span>
                         </div>

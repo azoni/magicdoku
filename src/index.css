@@ -160,6 +160,13 @@ h1.fab-title {
 .stat.mtg span { color: #f8e45c; }
 .stat.fab span { color: #ff6b6b; }
 
+.total-plays {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
 /* Message */
 .message {
   text-align: center;
