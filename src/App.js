@@ -174,23 +174,6 @@ async function checkValidCardExists(cat1, cat2) {
   }
 }
 
-// Search for cards matching criteria
-async function searchCards(query, limit = 10) {
-  try {
-    const response = await rateLimitedFetch(
-      `${SCRYFALL_SEARCH}?q=${encodeURIComponent(query)}&unique=cards&order=name`
-    );
-    const data = await response.json();
-    if (data.data) {
-      return data.data.slice(0, limit);
-    }
-    return [];
-  } catch (error) {
-    console.error('Error searching cards:', error);
-    return [];
-  }
-}
-
 // Autocomplete card names
 async function autocompleteCards(query) {
   if (query.length < 2) return [];
