@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 // Import default categories
 import { CATEGORIES as MTG_CATEGORIES, config as mtgConfig } from './games/mtg';
@@ -34,17 +34,17 @@ async function loadCategoriesFromFirebase(gameId) {
   try {
     const docRef = doc(db, 'categories', gameId);
     const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
+    if (docSnap.exists() && docSnap.data().categories) {
       return docSnap.data().categories;
     }
   } catch (error) {
-    console.error('Error loading categories from Firebase:', error);
+    console.log('Firebase unavailable:', error.message);
   }
   return null;
 }
 
 // Save categories to Firebase
-async function saveCategoriestoFirebase(gameId, categories) {
+async function saveCategoriesToFirebase(gameId, categories) {
   try {
     const docRef = doc(db, 'categories', gameId);
     await setDoc(docRef, {
@@ -59,25 +59,246 @@ async function saveCategoriestoFirebase(gameId, categories) {
   }
 }
 
-// Admin Home
+// Seed all default categories to Firebase
+async function seedAllCategories() {
+  const results = [];
+  for (const [gameId, categories] of Object.entries(DEFAULT_CATEGORIES)) {
+    const success = await saveCategoriesToFirebase(gameId, categories);
+    results.push({ gameId, success });
+  }
+  return results;
+}
+
+function formatDate(dateStr) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short',
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+// Admin Home with Stats
 export function AdminHome() {
+  const [stats, setStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [dateRange, setDateRange] = useState('7');
+  const [firebaseStatus, setFirebaseStatus] = useState('checking');
+  const [seeding, setSeeding] = useState(false);
+
+  useEffect(() => {
+    async function loadStats() {
+      setLoading(true);
+      try {
+        const guessesRef = collection(db, 'guesses');
+        const q = query(guessesRef, orderBy('date', 'desc'));
+        const snapshot = await getDocs(q);
+        
+        const data = [];
+        snapshot.forEach(doc => {
+          data.push({ id: doc.id, ...doc.data() });
+        });
+        setStats(data);
+        setFirebaseStatus('connected');
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        setFirebaseStatus('error');
+      }
+      setLoading(false);
+    }
+    
+    loadStats();
+  }, []);
+
+  const handleSeedDatabase = async () => {
+    if (!window.confirm('This will initialize/overwrite categories in Firebase with defaults. Continue?')) {
+      return;
+    }
+    setSeeding(true);
+    const results = await seedAllCategories();
+    setSeeding(false);
+    const allSuccess = results.every(r => r.success);
+    if (allSuccess) {
+      alert('Database seeded successfully! Categories are now in Firebase.');
+      setFirebaseStatus('connected');
+    } else {
+      alert('Some categories failed to seed. Check console for errors.');
+    }
+  };
+
+  // Filter stats
+  const filteredStats = stats.filter(s => {
+    if (filter !== 'all' && s.gameId !== filter) return false;
+    if (dateRange !== 'all') {
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
+      const statDate = new Date(s.date);
+      if (statDate < daysAgo) return false;
+    }
+    return true;
+  });
+
+  // Calculate totals
+  const totalGuesses = filteredStats.reduce((sum, s) => sum + (s.totalGuesses || 0), 0);
+  const totalCorrect = filteredStats.reduce((sum, s) => {
+    let correct = 0;
+    for (let i = 0; i < 9; i++) {
+      correct += s[`cell${i}`]?.correctGuesses || 0;
+    }
+    return sum + correct;
+  }, 0);
+  const uniqueDays = new Set(filteredStats.map(s => s.date)).size;
+
   return (
     <div className="app">
       <div className="admin-home">
         <Link to="/" className="back-link">← Back to Games</Link>
         <h1>Admin Panel</h1>
-        <p className="admin-subtitle">Manage categories for each game (saved to Firebase)</p>
         
-        <div className="admin-game-grid">
-          {Object.entries(GAME_CONFIGS).map(([id, config]) => (
-            <Link key={id} to={`/admin/${id}`} className={`admin-game-card ${id}`}>
-              <div className="icon">{config.emoji}</div>
-              <h2>{config.name}</h2>
-              <p>Edit categories</p>
-            </Link>
-          ))}
+        {/* Firebase Status */}
+        <div className={`firebase-status ${firebaseStatus}`}>
+          {firebaseStatus === 'checking' && '🔄 Checking Firebase connection...'}
+          {firebaseStatus === 'connected' && '✅ Firebase connected'}
+          {firebaseStatus === 'error' && '❌ Firebase offline - check your config'}
+        </div>
+
+        {/* Seed Database Button */}
+        {firebaseStatus === 'error' && (
+          <div className="admin-section">
+            <h3>⚠️ Firebase Setup Required</h3>
+            <p style={{ marginBottom: '12px', color: 'rgba(255,255,255,0.7)' }}>
+              Make sure you have:
+              <br/>1. Created a Firebase project
+              <br/>2. Added env variables (REACT_APP_FIREBASE_*)
+              <br/>3. Enabled Firestore Database
+              <br/>4. Set Firestore rules to allow read/write
+            </p>
+          </div>
+        )}
+
+        <div className="admin-section">
+          <h3>Database Setup</h3>
+          <div className="admin-buttons">
+            <button 
+              className="btn-primary" 
+              onClick={handleSeedDatabase}
+              disabled={seeding}
+            >
+              {seeding ? 'Seeding...' : '🌱 Seed Database with Defaults'}
+            </button>
+          </div>
+          <p style={{ marginTop: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
+            Run this once to initialize categories in Firebase
+          </p>
         </div>
         
+        {/* Category Management */}
+        <div className="admin-section">
+          <h3>Category Management</h3>
+          <div className="admin-game-grid">
+            {Object.entries(GAME_CONFIGS).map(([id, config]) => (
+              <Link key={id} to={`/admin/${id}`} className={`admin-game-card ${id}`}>
+                <div className="icon">{config.emoji}</div>
+                <h2>{config.name}</h2>
+                <p>Edit categories</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats Dashboard */}
+        <div className="admin-section">
+          <h3>📊 Stats Dashboard</h3>
+          
+          <div className="admin-filters">
+            <div className="filter-group">
+              <label>Game:</label>
+              <select value={filter} onChange={e => setFilter(e.target.value)}>
+                <option value="all">All Games</option>
+                <option value="mtg">Magic: The Gathering</option>
+                <option value="fab">Flesh and Blood</option>
+              </select>
+            </div>
+            <div className="filter-group">
+              <label>Date Range:</label>
+              <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="loading">
+              <div className="spinner"></div>
+              <p>Loading stats...</p>
+            </div>
+          ) : (
+            <>
+              <div className="stats-summary">
+                <div className="summary-card">
+                  <div className="summary-value">{totalGuesses.toLocaleString()}</div>
+                  <div className="summary-label">Total Guesses</div>
+                </div>
+                <div className="summary-card">
+                  <div className="summary-value">{totalCorrect.toLocaleString()}</div>
+                  <div className="summary-label">Correct Guesses</div>
+                </div>
+                <div className="summary-card">
+                  <div className="summary-value">
+                    {totalGuesses > 0 ? Math.round((totalCorrect / totalGuesses) * 100) : 0}%
+                  </div>
+                  <div className="summary-label">Success Rate</div>
+                </div>
+                <div className="summary-card">
+                  <div className="summary-value">{uniqueDays}</div>
+                  <div className="summary-label">Days Active</div>
+                </div>
+              </div>
+
+              {filteredStats.length > 0 && (
+                <div className="stats-table">
+                  <div className="table-header">
+                    <span>Date</span>
+                    <span>Game</span>
+                    <span>Guesses</span>
+                    <span>Correct</span>
+                    <span>Rate</span>
+                  </div>
+                  {filteredStats.slice(0, 20).map(stat => {
+                    let correctGuesses = 0;
+                    for (let i = 0; i < 9; i++) {
+                      correctGuesses += stat[`cell${i}`]?.correctGuesses || 0;
+                    }
+                    const rate = stat.totalGuesses > 0 
+                      ? Math.round((correctGuesses / stat.totalGuesses) * 100) 
+                      : 0;
+                    
+                    return (
+                      <div key={stat.id} className="table-row">
+                        <span>{formatDate(stat.date)}</span>
+                        <span className={`game-badge ${stat.gameId}`}>
+                          {GAME_CONFIGS[stat.gameId]?.emoji} {stat.gameId.toUpperCase()}
+                        </span>
+                        <span>{stat.totalGuesses || 0}</span>
+                        <span>{correctGuesses}</span>
+                        <span className={rate >= 50 ? 'good' : rate >= 25 ? 'ok' : 'low'}>
+                          {rate}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Data Export */}
         <div className="admin-section">
           <h3>Data Management</h3>
           <div className="admin-buttons">
@@ -94,7 +315,7 @@ export function AdminHome() {
               a.download = 'tcgdoku-categories.json';
               a.click();
             }}>
-              Export All Categories
+              Export Categories
             </button>
             <label className="btn-secondary file-input-label">
               Import Categories
@@ -110,7 +331,7 @@ export function AdminHome() {
                       try {
                         const data = JSON.parse(event.target.result);
                         for (const [gameId, categories] of Object.entries(data)) {
-                          await saveCategoriestoFirebase(gameId, categories);
+                          await saveCategoriesToFirebase(gameId, categories);
                         }
                         alert('Categories imported successfully!');
                       } catch (err) {
@@ -122,25 +343,7 @@ export function AdminHome() {
                 }}
               />
             </label>
-            <button className="btn-danger" onClick={async () => {
-              if (window.confirm('Reset all categories to defaults? This cannot be undone.')) {
-                for (const gameId of Object.keys(DEFAULT_CATEGORIES)) {
-                  await saveCategoriestoFirebase(gameId, DEFAULT_CATEGORIES[gameId]);
-                }
-                alert('All categories reset to defaults!');
-                window.location.reload();
-              }
-            }}>
-              Reset All to Defaults
-            </button>
           </div>
-        </div>
-        
-        <div className="admin-section">
-          <h3>View Stats</h3>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-            View guess statistics in your Firebase console under the "guesses" collection.
-          </p>
         </div>
       </div>
     </div>
@@ -158,6 +361,7 @@ export function CategoryEditor() {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [firebaseLoaded, setFirebaseLoaded] = useState(false);
 
   const config = GAME_CONFIGS[gameId];
 
@@ -172,8 +376,11 @@ export function CategoryEditor() {
       const firebaseCats = await loadCategoriesFromFirebase(gameId);
       if (firebaseCats) {
         setCategories(firebaseCats);
+        setFirebaseLoaded(true);
       } else {
+        // No Firebase data - load defaults
         setCategories(serializeCategories(DEFAULT_CATEGORIES[gameId]));
+        setFirebaseLoaded(false);
       }
       setLoading(false);
     }
@@ -188,12 +395,15 @@ export function CategoryEditor() {
 
   const handleSave = async () => {
     setSaving(true);
-    const success = await saveCategoriestoFirebase(gameId, categories);
+    const success = await saveCategoriesToFirebase(gameId, categories);
     setSaving(false);
     if (success) {
+      setFirebaseLoaded(true);
+      // Also update localStorage cache
+      localStorage.setItem(`tcgdoku-categories-${gameId}`, JSON.stringify(categories));
       showMessage('Categories saved to Firebase!');
     } else {
-      showMessage('Error saving categories', 'error');
+      showMessage('Error saving categories - check Firebase config', 'error');
     }
   };
 
@@ -271,15 +481,6 @@ export function CategoryEditor() {
     showMessage(editingItem.isNew ? 'Item added' : 'Item updated');
   };
 
-  const handleResetGame = async () => {
-    if (window.confirm(`Reset ${config.name} categories to defaults?`)) {
-      const defaults = serializeCategories(DEFAULT_CATEGORIES[gameId]);
-      setCategories(defaults);
-      await saveCategoriestoFirebase(gameId, DEFAULT_CATEGORIES[gameId]);
-      showMessage('Reset to defaults');
-    }
-  };
-
   if (!config) return null;
 
   if (loading) {
@@ -311,16 +512,19 @@ export function CategoryEditor() {
           <div className={`message ${message.type}`}>{message.text}</div>
         )}
 
+        {!firebaseLoaded && (
+          <div className="firebase-status error" style={{ marginBottom: '16px' }}>
+            ⚠️ Showing default categories - not yet saved to Firebase
+          </div>
+        )}
+
         <div className="admin-actions">
           <button 
             className={`btn-primary ${gameId}`} 
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Saving...' : '💾 Save to Firebase'}
-          </button>
-          <button className="btn-secondary" onClick={handleResetGame}>
-            Reset to Defaults
+            {saving ? 'Saving...' : firebaseLoaded ? '💾 Save Changes' : '💾 Save to Firebase'}
           </button>
         </div>
 

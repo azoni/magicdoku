@@ -79,18 +79,40 @@ export const CATEGORIES = {
   ],
 };
 
-// Load custom categories from localStorage
+// Load custom categories - use localStorage cache, fallback to defaults
 function getCategories() {
-  const saved = localStorage.getItem('tcgdoku-admin-mtg');
+  const saved = localStorage.getItem('tcgdoku-categories-mtg');
   if (saved) {
     try {
       return JSON.parse(saved);
     } catch (e) {
-      console.error('Error loading saved categories:', e);
+      console.error('Error parsing saved categories:', e);
     }
   }
   return CATEGORIES;
 }
+
+// Initialize: try to load categories from Firebase into localStorage
+async function initCategories() {
+  try {
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('../firebase');
+    const docRef = doc(db, 'categories', 'mtg');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().categories) {
+      const data = docSnap.data().categories;
+      localStorage.setItem('tcgdoku-categories-mtg', JSON.stringify(data));
+      console.log('MTG categories loaded from Firebase');
+    } else {
+      console.log('No MTG categories in Firebase, using defaults');
+    }
+  } catch (error) {
+    console.log('Firebase unavailable, using default categories');
+  }
+}
+
+// Load on module init (non-blocking)
+initCategories();
 
 // API Functions
 export async function checkValidCardExists(cat1, cat2) {
