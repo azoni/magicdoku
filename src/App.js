@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Link, useParams } from 'react-router-dom';
 import GameBoard from './GameBoard';
+import { AdminHome, CategoryEditor } from './Admin';
 
 // Import game configs
 import * as mtg from './games/mtg';
@@ -32,6 +33,8 @@ function Home() {
             <p>Match cards by class, pitch, cost, and more</p>
           </Link>
         </div>
+        
+        <Link to="/admin" className="admin-link">⚙️ Admin Panel</Link>
       </div>
     </div>
   );
@@ -60,6 +63,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/admin" element={<AdminHome />} />
+      <Route path="/admin/:gameId" element={<CategoryEditor />} />
       <Route path="/:gameId" element={<GamePage />} />
     </Routes>
   );

@@ -17,7 +17,7 @@ async function rateLimitedFetch(url) {
   return fetch(url);
 }
 
-// Categories
+// Default Categories
 export const CATEGORIES = {
   classes: [
     { id: 'brute', label: 'Brute', query: 'class=brute', apiParam: { class: 'brute' } },
@@ -59,6 +59,19 @@ export const CATEGORIES = {
     { id: 'cost3plus', label: 'Cost 3+', query: 'cost=3', apiParam: { cost: '3' } },
   ],
 };
+
+// Load custom categories from localStorage
+function getCategories() {
+  const saved = localStorage.getItem('tcgdoku-admin-fab');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading saved categories:', e);
+    }
+  }
+  return CATEGORIES;
+}
 
 // Build query string from category
 function buildQueryString(cat1, cat2) {
@@ -171,12 +184,13 @@ export function getCardDisplayInfo(card) {
 
 // Get all categories for puzzle generation
 export function getAllCategories() {
+  const cats = getCategories();
   return [
-    ...CATEGORIES.classes.slice(0, 6), // Limit to most common classes
-    ...CATEGORIES.pitch,
-    ...CATEGORIES.types,
-    ...CATEGORIES.rarity,
-    ...CATEGORIES.cost.slice(0, 3),
+    ...((cats.classes || []).slice(0, 6)), // Limit to most common classes
+    ...(cats.pitch || []),
+    ...(cats.types || []),
+    ...(cats.rarity || []),
+    ...((cats.cost || []).slice(0, 3)),
   ];
 }
 

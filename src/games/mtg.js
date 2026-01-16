@@ -19,7 +19,7 @@ async function rateLimitedFetch(url) {
   return fetch(url);
 }
 
-// Categories
+// Default Categories
 export const CATEGORIES = {
   colors: [
     { id: 'white', label: 'White', query: 'c:w', colorClass: 'color-W' },
@@ -78,6 +78,19 @@ export const CATEGORIES = {
     { id: 'toughness5plus', label: 'Toughness ≥ 5', query: 'tou>=5' },
   ],
 };
+
+// Load custom categories from localStorage
+function getCategories() {
+  const saved = localStorage.getItem('tcgdoku-admin-mtg');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading saved categories:', e);
+    }
+  }
+  return CATEGORIES;
+}
 
 // API Functions
 export async function checkValidCardExists(cat1, cat2) {
@@ -149,14 +162,15 @@ export function getCardDisplayInfo(card) {
 
 // Get all categories for puzzle generation
 export function getAllCategories() {
+  const cats = getCategories();
   return [
-    ...CATEGORIES.colors,
-    ...CATEGORIES.types,
-    ...CATEGORIES.creatureTypes,
-    ...CATEGORIES.manaValue,
-    ...CATEGORIES.rarity,
-    ...CATEGORIES.keywords,
-    ...CATEGORIES.stats,
+    ...(cats.colors || []),
+    ...(cats.types || []),
+    ...(cats.creatureTypes || []),
+    ...(cats.manaValue || []),
+    ...(cats.rarity || []),
+    ...(cats.keywords || []),
+    ...(cats.stats || []),
   ];
 }
 
