@@ -1,33 +1,24 @@
 // Flesh and Blood Game Configuration
-// Uses static JSON from the-fab-cube/flesh-and-blood-cards GitHub repo
+// Uses @flesh-and-blood/cards npm package
 
-const CARDS_URL = 'https://raw.githubusercontent.com/the-fab-cube/flesh-and-blood-cards/refs/heads/main/json/english/card.json';
+import { cards } from '@flesh-and-blood/cards';
 
-// Cache for loaded cards
-let cardsCache = null;
-let cardsLoading = null;
+// Pitch to color mapping
+const PITCH_COLORS = {
+  1: 'Red',
+  2: 'Yellow', 
+  3: 'Blue',
+};
 
-// Load all cards (cached)
-async function loadCards() {
-  if (cardsCache) return cardsCache;
-  if (cardsLoading) return cardsLoading;
-  
-  cardsLoading = fetch(CARDS_URL)
-    .then(res => res.json())
-    .then(cards => {
-      cardsCache = cards;
-      return cards;
-    })
-    .catch(err => {
-      console.error('Error loading FAB cards:', err);
-      cardsLoading = null;
-      return [];
-    });
-  
-  return cardsLoading;
+// Get display name with pitch color
+function getDisplayName(card) {
+  if (card.pitch) {
+    return `${card.name} (${PITCH_COLORS[card.pitch]})`;
+  }
+  return card.name;
 }
 
-// Default Categories
+// Default Categories - using actual enum values from the package
 export const CATEGORIES = {
   classes: [
     { id: 'brute', label: 'Brute', filter: c => c.classes?.includes('Brute') },
@@ -40,40 +31,67 @@ export const CATEGORIES = {
     { id: 'ranger', label: 'Ranger', filter: c => c.classes?.includes('Ranger') },
     { id: 'illusionist', label: 'Illusionist', filter: c => c.classes?.includes('Illusionist') },
     { id: 'generic', label: 'Generic', filter: c => c.classes?.includes('Generic') },
+    { id: 'assassin', label: 'Assassin', filter: c => c.classes?.includes('Assassin') },
+    { id: 'necromancer', label: 'Necromancer', filter: c => c.classes?.includes('Necromancer') },
   ],
   pitch: [
-    { id: 'pitch1', label: 'Pitch 1 (Red)', filter: c => c.pitch === 1, colorClass: 'pitch-1' },
-    { id: 'pitch2', label: 'Pitch 2 (Yellow)', filter: c => c.pitch === 2, colorClass: 'pitch-2' },
-    { id: 'pitch3', label: 'Pitch 3 (Blue)', filter: c => c.pitch === 3, colorClass: 'pitch-3' },
+    { id: 'pitch1', label: 'Red (Pitch 1)', filter: c => c.pitch === 1, colorClass: 'pitch-1' },
+    { id: 'pitch2', label: 'Yellow (Pitch 2)', filter: c => c.pitch === 2, colorClass: 'pitch-2' },
+    { id: 'pitch3', label: 'Blue (Pitch 3)', filter: c => c.pitch === 3, colorClass: 'pitch-3' },
   ],
   types: [
-    { id: 'attack', label: 'Attack Action', filter: c => c.types?.some(t => t.includes('Attack')) },
-    { id: 'defense', label: 'Defense Reaction', filter: c => c.types?.some(t => t.includes('Defense')) },
+    { id: 'action', label: 'Action', filter: c => c.types?.includes('Action') },
+    { id: 'attackReaction', label: 'Attack Reaction', filter: c => c.types?.includes('Attack Reaction') },
+    { id: 'defenseReaction', label: 'Defense Reaction', filter: c => c.types?.includes('Defense Reaction') },
     { id: 'instant', label: 'Instant', filter: c => c.types?.includes('Instant') },
-    { id: 'action', label: 'Action', filter: c => c.types?.includes('Action') && !c.types?.some(t => t.includes('Attack')) },
+    { id: 'equipment', label: 'Equipment', filter: c => c.types?.includes('Equipment') },
+    { id: 'weapon', label: 'Weapon', filter: c => c.types?.includes('Weapon') },
+  ],
+  subtypes: [
+    { id: 'attack', label: 'Attack', filter: c => c.subtypes?.includes('Attack') },
+    { id: 'nonAttack', label: 'Non-Attack', filter: c => c.subtypes?.includes('Non-Attack') },
+    { id: 'aura', label: 'Aura', filter: c => c.subtypes?.includes('Aura') },
   ],
   rarity: [
-    { id: 'common', label: 'Common', filter: c => c.rarity === 'Common' || c.rarities?.includes('C') },
-    { id: 'rare', label: 'Rare', filter: c => c.rarity === 'Rare' || c.rarities?.includes('R') },
-    { id: 'majestic', label: 'Majestic', filter: c => c.rarity === 'Majestic' || c.rarities?.includes('M') },
-    { id: 'legendary', label: 'Legendary', filter: c => c.rarity === 'Legendary' || c.rarities?.includes('L') },
+    { id: 'common', label: 'Common', filter: c => c.rarity === 'Common' },
+    { id: 'rare', label: 'Rare', filter: c => c.rarity === 'Rare' },
+    { id: 'majestic', label: 'Majestic', filter: c => c.rarity === 'Majestic' },
+    { id: 'legendary', label: 'Legendary', filter: c => c.rarity === 'Legendary' },
+    { id: 'superRare', label: 'Super Rare', filter: c => c.rarity === 'Super Rare' },
   ],
   cost: [
-    { id: 'cost0', label: 'Cost 0', filter: c => c.cost === 0 || c.cost === '0' },
-    { id: 'cost1', label: 'Cost 1', filter: c => c.cost === 1 || c.cost === '1' },
-    { id: 'cost2', label: 'Cost 2', filter: c => c.cost === 2 || c.cost === '2' },
-    { id: 'cost3plus', label: 'Cost 3+', filter: c => (parseInt(c.cost) || 0) >= 3 },
+    { id: 'cost0', label: 'Cost 0', filter: c => c.cost === 0 },
+    { id: 'cost1', label: 'Cost 1', filter: c => c.cost === 1 },
+    { id: 'cost2', label: 'Cost 2', filter: c => c.cost === 2 },
+    { id: 'cost3plus', label: 'Cost 3+', filter: c => c.cost !== undefined && c.cost >= 3 },
   ],
   power: [
-    { id: 'power3', label: 'Power 3+', filter: c => (parseInt(c.power) || 0) >= 3 },
-    { id: 'power5', label: 'Power 5+', filter: c => (parseInt(c.power) || 0) >= 5 },
-    { id: 'power7', label: 'Power 7+', filter: c => (parseInt(c.power) || 0) >= 7 },
+    { id: 'power3plus', label: 'Power 3+', filter: c => c.power !== undefined && c.power >= 3 },
+    { id: 'power5plus', label: 'Power 5+', filter: c => c.power !== undefined && c.power >= 5 },
+    { id: 'power7plus', label: 'Power 7+', filter: c => c.power !== undefined && c.power >= 7 },
   ],
   defense: [
-    { id: 'defense2', label: 'Defense 2+', filter: c => (parseInt(c.defense) || 0) >= 2 },
-    { id: 'defense3', label: 'Defense 3+', filter: c => (parseInt(c.defense) || 0) >= 3 },
+    { id: 'defense2plus', label: 'Defense 2+', filter: c => c.defense !== undefined && c.defense >= 2 },
+    { id: 'defense3plus', label: 'Defense 3+', filter: c => c.defense !== undefined && c.defense >= 3 },
+  ],
+  keywords: [
+    { id: 'goAgain', label: 'Go Again', filter: c => c.keywords?.includes('Go again') },
+    { id: 'dominate', label: 'Dominate', filter: c => c.keywords?.includes('Dominate') },
+    { id: 'intimidate', label: 'Intimidate', filter: c => c.keywords?.includes('Intimidate') },
+    { id: 'combo', label: 'Combo', filter: c => c.keywords?.includes('Combo') },
+    { id: 'boost', label: 'Boost', filter: c => c.keywords?.includes('Boost') },
   ],
 };
+
+// Get playable cards only (exclude tokens, heroes for guessing)
+function getPlayableCards() {
+  return cards.filter(c => 
+    !c.types?.includes('Hero') && 
+    !c.types?.includes('Token') &&
+    !c.types?.includes('Weapon') &&
+    c.name
+  );
+}
 
 // Load custom categories from localStorage
 function getCategories() {
@@ -84,7 +102,6 @@ function getCategories() {
       // Re-attach filter functions based on IDs
       Object.keys(parsed).forEach(groupKey => {
         parsed[groupKey] = parsed[groupKey].map(cat => {
-          // Find matching default category to get filter function
           const defaultGroup = CATEGORIES[groupKey];
           const defaultCat = defaultGroup?.find(d => d.id === cat.id);
           return {
@@ -111,22 +128,45 @@ function cardMatchesFilter(card, category) {
 
 // API Functions
 export async function checkValidCardExists(cat1, cat2) {
-  const cards = await loadCards();
-  return cards.some(card => cardMatchesFilter(card, cat1) && cardMatchesFilter(card, cat2));
+  const playableCards = getPlayableCards();
+  return playableCards.some(card => cardMatchesFilter(card, cat1) && cardMatchesFilter(card, cat2));
 }
 
 export async function autocompleteCards(query) {
-  if (query.length < 2) return [];
-  const cards = await loadCards();
-  const lowerQuery = query.toLowerCase();
-  return cards
-    .filter(card => card.name?.toLowerCase().includes(lowerQuery))
-    .slice(0, 10);
+  // Not used anymore but kept for interface
+  return [];
 }
 
 export async function getCardByName(name) {
-  const cards = await loadCards();
-  return cards.find(card => card.name?.toLowerCase() === name.toLowerCase());
+  const playableCards = getPlayableCards();
+  const lowerName = name.toLowerCase().trim();
+  
+  // Try exact match first (with pitch color)
+  let card = playableCards.find(c => getDisplayName(c).toLowerCase() === lowerName);
+  
+  // Try matching without pitch color
+  if (!card) {
+    card = playableCards.find(c => c.name.toLowerCase() === lowerName);
+  }
+  
+  // Try partial match
+  if (!card) {
+    card = playableCards.find(c => 
+      c.name.toLowerCase() === lowerName ||
+      getDisplayName(c).toLowerCase() === lowerName
+    );
+  }
+  
+  // Return card with display name added
+  if (card) {
+    return {
+      ...card,
+      name: getDisplayName(card), // Override name with display name including pitch
+      baseName: card.name, // Keep original name available
+    };
+  }
+  
+  return null;
 }
 
 export async function cardMatchesCategory(card, category) {
@@ -134,26 +174,18 @@ export async function cardMatchesCategory(card, category) {
 }
 
 export function getCardImage(card) {
-  // Try to get image from printings
+  // Get image from default or first printing
+  if (card.defaultImage) return card.defaultImage;
   if (card.printings && card.printings.length > 0) {
-    const printing = card.printings[0];
-    if (printing.image) return printing.image;
-    // Construct image URL from set and identifier
-    if (printing.identifier) {
-      return `https://storage.googleapis.com/fabmaster/cardfaces/${printing.identifier}.png`;
-    }
-  }
-  // Fallback to card identifier
-  if (card.identifier) {
-    return `https://storage.googleapis.com/fabmaster/cardfaces/${card.identifier}.png`;
+    return card.printings[0].image;
   }
   return null;
 }
 
 export function getCardDisplayInfo(card) {
   return {
-    name: card.name,
-    set: card.printings?.[0]?.set || card.set_printings?.[0] || '',
+    name: getDisplayName(card),
+    set: card.sets?.[0] || '',
   };
 }
 
@@ -163,7 +195,8 @@ export function getAllCategories() {
   return [
     ...((cats.classes || []).slice(0, 6)),
     ...(cats.pitch || []),
-    ...(cats.types || []),
+    ...(cats.types || []).slice(0, 4),
+    ...(cats.subtypes || []).slice(0, 2),
     ...(cats.rarity || []).slice(0, 3),
     ...(cats.cost || []).slice(0, 3),
   ];
@@ -172,13 +205,10 @@ export function getAllCategories() {
 // Fallback categories guaranteed to work
 export function getFallbackCategories() {
   return {
-    rowCategories: [CATEGORIES.classes[0], CATEGORIES.classes[1], CATEGORIES.classes[2]],
+    rowCategories: [CATEGORIES.classes[0], CATEGORIES.classes[1], CATEGORIES.classes[4]],
     colCategories: [CATEGORIES.pitch[0], CATEGORIES.pitch[1], CATEGORIES.pitch[2]],
   };
 }
-
-// Preload cards on module load
-loadCards();
 
 // Config export
 export const config = {
