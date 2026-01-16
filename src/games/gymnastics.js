@@ -4,7 +4,7 @@
 export const config = {
   id: 'gymnastics',
   name: 'Gymnastics',
-  shortName: 'Gym',
+  shortName: 'GymDoku',
   emoji: '🤸',
 };
 
@@ -294,6 +294,30 @@ export async function checkValidCardExists(cat1, cat2) {
 // Get all skills (for validation)
 export function getAllCards() {
   return SKILLS;
+}
+
+// Get categories object
+export function getCategories() {
+  return CATEGORIES;
+}
+
+// Get all categories as flat array
+export function getAllCategories() {
+  return [
+    ...(CATEGORIES.apparatus || []),
+    ...(CATEGORIES.difficulty || []),
+    ...(CATEGORIES.type || []),
+    ...(CATEGORIES.group || []),
+    ...(CATEGORIES.special || []),
+  ];
+}
+
+// Fallback categories guaranteed to work
+export function getFallbackCategories() {
+  return {
+    rowCategories: [CATEGORIES.apparatus[0], CATEGORIES.apparatus[1], CATEGORIES.apparatus[3]], // Floor, Beam, Vault
+    colCategories: [CATEGORIES.difficulty[0], CATEGORIES.difficulty[1], CATEGORIES.difficulty[2]], // A, B, C
+  };
 }
 
 // Get skill image - using placeholder for now
