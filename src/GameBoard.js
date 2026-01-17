@@ -150,9 +150,15 @@ async function generatePuzzle(game, seed, hiddenCategoryIds = []) {
     colCategories = [];
     
     for (const cat of candidates) {
-      if (rowCategories.length < 3 && !rowCategories.some(c => c.group === cat.group)) {
+      // Use category id as fallback if group is not defined
+      const catGroup = cat.group || cat.id;
+      
+      const rowHasGroup = rowCategories.some(c => (c.group || c.id) === catGroup);
+      const colHasGroup = colCategories.some(c => (c.group || c.id) === catGroup);
+      
+      if (rowCategories.length < 3 && !rowHasGroup) {
         rowCategories.push(cat);
-      } else if (colCategories.length < 3 && !colCategories.some(c => c.group === cat.group) && !rowCategories.includes(cat)) {
+      } else if (colCategories.length < 3 && !colHasGroup && !rowCategories.includes(cat)) {
         colCategories.push(cat);
       }
       if (rowCategories.length === 3 && colCategories.length === 3) break;

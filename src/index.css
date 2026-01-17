@@ -2261,7 +2261,9 @@ button:disabled {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  min-height: 0; /* Override base .cell min-height */
+  /* Override base .cell properties that break grid layout */
+  min-height: 0;
+  aspect-ratio: auto;
 }
 
 .cell.compact.missed {
