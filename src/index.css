@@ -2169,20 +2169,23 @@ button:disabled {
 }
 
 .help-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
+  padding: 6px 10px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+  font-size: 0.75rem;
 }
 
 .help-btn:hover {
   color: white;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Stats Bar */
@@ -2241,24 +2244,30 @@ button:disabled {
 /* Compact Game Board */
 .game-board.compact {
   display: grid;
-  grid-template-columns: 70px repeat(3, 1fr);
+  grid-template-columns: 80px repeat(3, 1fr);
   grid-template-rows: 50px repeat(3, 1fr);
   gap: 4px;
   flex: 1;
-  max-height: calc(100vh - 280px);
-  min-height: 300px;
+  max-height: calc(100vh - 320px);
+  min-height: 250px;
 }
 
 .header-cell.compact {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .cell.compact {
   min-height: 0;
-  aspect-ratio: 1;
   position: relative;
   cursor: pointer;
+  overflow: hidden;
+  border-radius: 4px;
 }
 
 .cell.compact.missed {
@@ -2271,6 +2280,7 @@ button:disabled {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 4px;
 }
 
 .card-name-overlay {
@@ -2279,12 +2289,13 @@ button:disabled {
   left: 0;
   right: 0;
   background: linear-gradient(transparent, rgba(0,0,0,0.9));
-  padding: 4px;
-  font-size: 0.55rem;
+  padding: 6px 4px 4px;
+  font-size: 0.6rem;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
 
 /* Cell Stats Overlay */
@@ -2320,6 +2331,20 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
+/* Player percent badge on solved cells */
+.player-percent-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #4ade80;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  z-index: 2;
+}
+
 /* Game Over Compact */
 .game-over-compact {
   background: rgba(255, 255, 255, 0.03);
@@ -2333,7 +2358,8 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .result-text {
@@ -2345,6 +2371,50 @@ button:disabled {
   font-size: 1.5rem;
   font-weight: 700;
   color: white;
+}
+
+.uniqueness-score {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.uniqueness-score strong {
+  color: #4ade80;
+}
+
+/* Rarity Toggle */
+.rarity-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.toggle-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-weight: 600;
 }
 
 .share-row {
@@ -2619,60 +2689,202 @@ button:disabled {
 /* Mobile adjustments for compact layout */
 @media (max-width: 480px) {
   .app.compact {
-    padding: 8px;
+    padding: 6px;
+    max-height: 100dvh;
+  }
+  
+  .compact-header {
+    padding: 4px 0;
+    margin-bottom: 4px;
   }
   
   .compact-header h1 {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
+  }
+  
+  .date-small {
+    font-size: 0.65rem;
+  }
+  
+  /* Hide text on mobile, show only icon */
+  .help-btn span {
+    display: none;
+  }
+  
+  .help-btn {
+    padding: 8px;
+    border-radius: 50%;
   }
   
   .stats-bar {
-    gap: 10px;
+    gap: 8px;
+    margin-bottom: 8px;
   }
   
   .stat-pill {
-    padding: 5px 10px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    gap: 4px;
   }
   
   .game-board.compact {
-    grid-template-columns: 60px repeat(3, 1fr);
-    grid-template-rows: 45px repeat(3, 1fr);
+    grid-template-columns: 55px repeat(3, 1fr);
+    grid-template-rows: 40px repeat(3, 1fr);
     gap: 3px;
+    max-height: calc(100dvh - 280px);
+    min-height: 200px;
   }
   
   .header-cell.compact {
-    font-size: 0.6rem;
-    padding: 4px;
+    font-size: 0.55rem;
+    padding: 3px;
+    line-height: 1.1;
+  }
+  
+  .card-name-overlay {
+    font-size: 0.5rem;
+    padding: 4px 2px 2px;
+  }
+  
+  .player-percent-badge {
+    font-size: 0.55rem;
+    padding: 1px 3px;
+    top: 2px;
+    right: 2px;
   }
   
   .cell-stats-overlay {
-    font-size: 0.5rem;
+    font-size: 0.45rem;
+    padding: 2px;
+  }
+  
+  .cell-stats-overlay .stat-row {
+    gap: 2px;
+    margin: 1px 0;
   }
   
   .game-over-compact {
-    padding: 12px;
+    padding: 10px;
+    margin-top: 8px;
+  }
+  
+  .result-row {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .result-row svg {
+    width: 24px;
+    height: 24px;
   }
   
   .result-text {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
   
   .result-score {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+  }
+  
+  .uniqueness-score {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+  
+  .rarity-toggle {
+    margin-bottom: 10px;
+  }
+  
+  .toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+  
+  .share-row {
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .share-grid {
+    grid-template-columns: repeat(3, 16px);
+    gap: 2px;
+  }
+  
+  .share-cell {
+    width: 16px;
+    height: 16px;
   }
   
   .copy-btn {
     padding: 8px 12px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+  }
+  
+  .next-row {
+    padding-top: 8px;
+    gap: 8px;
+  }
+  
+  .next-label {
+    font-size: 0.7rem;
+  }
+  
+  .countdown {
+    font-size: 0.95rem;
   }
   
   .input-modal {
-    padding: 20px 16px;
+    padding: 16px 12px;
+  }
+  
+  .modal-criteria {
+    gap: 6px;
+    margin-bottom: 14px;
   }
   
   .criteria-tag {
-    padding: 6px 10px;
-    font-size: 0.8rem;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+  
+  .modal-input {
+    padding: 12px;
+    font-size: 1rem;
+  }
+  
+  .preview-img {
+    width: 50px;
+    height: 70px;
+  }
+  
+  .help-modal {
+    padding: 20px 16px;
+  }
+  
+  .help-modal h2 {
+    font-size: 1.1rem;
+  }
+  
+  .help-content p {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .game-board.compact {
+    grid-template-columns: 45px repeat(3, 1fr);
+    grid-template-rows: 35px repeat(3, 1fr);
+    gap: 2px;
+  }
+  
+  .header-cell.compact {
+    font-size: 0.5rem;
+    padding: 2px;
+  }
+  
+  .card-name-overlay {
+    font-size: 0.45rem;
   }
 }

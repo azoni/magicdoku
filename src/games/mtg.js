@@ -170,8 +170,12 @@ export async function cardMatchesCategory(card, category) {
 }
 
 export function getCardImage(card) {
-  if (card.image_uris?.small) return card.image_uris.small;
-  if (card.card_faces?.[0]?.image_uris?.small) return card.card_faces[0].image_uris.small;
+  // Use art_crop for cleaner grid display (just the artwork, no card frame)
+  if (card.image_uris?.art_crop) return card.image_uris.art_crop;
+  if (card.card_faces?.[0]?.image_uris?.art_crop) return card.card_faces[0].image_uris.art_crop;
+  // Fallback to normal if art_crop unavailable
+  if (card.image_uris?.normal) return card.image_uris.normal;
+  if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
   return null;
 }
 

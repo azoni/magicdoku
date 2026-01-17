@@ -261,6 +261,7 @@ function GameBoard({ game }) {
   const [showHelp, setShowHelp] = useState(false);
   const [showInputModal, setShowInputModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showRarest, setShowRarest] = useState(false);
   
   const inputRef = useRef(null);
   const lookupTimeout = useRef(null);
@@ -504,6 +505,74 @@ function GameBoard({ game }) {
     }
   }, [gameState.gameOver, gameState.statsRecorded, gameId]);
 
+  // Get cell statistics
+  const getCellStats = useCallback((cellIndex) => {
+    if (!stats) return null;
+    const cellData = stats[`cell${cellIndex}`];
+    if (!cellData?.cards) return null;
+    
+    const totalCorrect = cellData.correctGuesses || 0;
+    if (totalCorrect === 0) return null;
+    
+    const sortedCards = Object.values(cellData.cards)
+      .filter(c => c.correct)
+      .sort((a, b) => b.count - a.count)
+      .map(c => ({
+        name: c.name,
+        percent: Math.round((c.count / totalCorrect) * 100),
+        count: c.count,
+      }));
+    
+    return {
+      totalCorrect,
+      mostCommon: sortedCards.slice(0, 3),
+      leastCommon: [...sortedCards].reverse().slice(0, 3),
+    };
+  }, [stats]);
+
+  // Get player's percentage for a cell they got correct
+  const getPlayerCellPercent = useCallback((cellIndex) => {
+    const card = gameState.board[cellIndex];
+    if (!card || !stats) return null;
+    
+    const cellData = stats[`cell${cellIndex}`];
+    if (!cellData?.cards) return null;
+    
+    const totalCorrect = cellData.correctGuesses || 0;
+    if (totalCorrect === 0) return null;
+    
+    // Find the card in stats
+    const cardKey = card.name.replace(/[./#$[\]]/g, '_').substring(0, 50);
+    const cardStats = Object.entries(cellData.cards).find(([key, val]) => 
+      key === cardKey || val.name.toLowerCase() === card.name.toLowerCase()
+    );
+    
+    if (cardStats) {
+      return Math.round((cardStats[1].count / totalCorrect) * 100);
+    }
+    
+    // If not found (new answer), return a small percentage
+    return 1;
+  }, [gameState.board, stats]);
+
+  // Calculate uniqueness score (sum of percentages - lower is more unique)
+  const getUniquenessScore = useCallback(() => {
+    if (!stats) return null;
+    
+    let totalPercent = 0;
+    let cellsWithStats = 0;
+    
+    for (let i = 0; i < 9; i++) {
+      const percent = getPlayerCellPercent(i);
+      if (percent !== null) {
+        totalPercent += percent;
+        cellsWithStats++;
+      }
+    }
+    
+    return cellsWithStats > 0 ? totalPercent : null;
+  }, [stats, getPlayerCellPercent]);
+
   const getShareText = useCallback(() => {
     const perf = getPerformanceRating(gameState.score);
     const grid = [
@@ -512,8 +581,11 @@ function GameBoard({ game }) {
       gameState.board.slice(6, 9).map(c => c ? '🟩' : '⬛').join(''),
     ].join('\n');
     
-    return `${game.config.shortName} ${getFormattedDate()}\n${gameState.score}/9 ${perf.rating}\n\n${grid}\n\ntcgdoku.netlify.app`;
-  }, [gameState, game.config.shortName]);
+    const uniqueness = getUniquenessScore();
+    const uniqueText = uniqueness !== null ? `\nRarity: ${uniqueness}` : '';
+    
+    return `${game.config.shortName} ${getFormattedDate()}\n${gameState.score}/9 ${perf.rating}${uniqueText}\n\n${grid}\n\ntcgdoku.netlify.app`;
+  }, [gameState, game.config.shortName, getUniquenessScore]);
 
   const copyResults = useCallback(() => {
     const text = getShareText();
@@ -522,24 +594,6 @@ function GameBoard({ game }) {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [getShareText]);
-
-  const getTopAnswers = (cellIndex) => {
-    if (!stats) return [];
-    const cellData = stats[`cell${cellIndex}`];
-    if (!cellData?.cards) return [];
-    
-    const totalCorrect = cellData.correctGuesses || 0;
-    if (totalCorrect === 0) return [];
-    
-    return Object.values(cellData.cards)
-      .filter(c => c.correct)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 2)
-      .map(c => ({
-        name: c.name,
-        percent: Math.round((c.count / totalCorrect) * 100),
-      }));
-  };
 
   if (loading) {
     return (
@@ -568,6 +622,7 @@ function GameBoard({ game }) {
         </div>
         <button className="help-btn" onClick={() => setShowHelp(true)} aria-label="How to play">
           <HelpIcon />
+          <span>How to Play</span>
         </button>
       </header>
 
@@ -610,7 +665,9 @@ function GameBoard({ game }) {
               const idx = row * 3 + col;
               const card = gameState.board[idx];
               const isSelected = gameState.selectedCell === idx;
-              const topAnswers = gameState.gameOver ? getTopAnswers(idx) : [];
+              const cellStats = gameState.gameOver ? getCellStats(idx) : null;
+              const playerPercent = gameState.gameOver ? getPlayerCellPercent(idx) : null;
+              const displayStats = cellStats ? (showRarest ? cellStats.leastCommon : cellStats.mostCommon) : [];
               
               return (
                 <div
@@ -634,14 +691,18 @@ function GameBoard({ game }) {
                       <div className="card-placeholder" style={{ display: game.getCardImage(card) ? 'none' : 'flex' }}>
                         <span className="placeholder-name">{card.name}</span>
                       </div>
+                      {/* Player's percentage badge */}
+                      {gameState.gameOver && playerPercent !== null && (
+                        <div className="player-percent-badge">{playerPercent}%</div>
+                      )}
                       <div className="card-name-overlay">{card.name}</div>
                     </>
                   ) : null}
                   
-                  {/* Stats overlay for game over */}
-                  {gameState.gameOver && topAnswers.length > 0 && (
+                  {/* Stats overlay for game over - only on empty cells */}
+                  {gameState.gameOver && !card && displayStats.length > 0 && (
                     <div className="cell-stats-overlay">
-                      {topAnswers.map((a, i) => (
+                      {displayStats.slice(0, 2).map((a, i) => (
                         <div key={i} className="stat-row">
                           <span className="stat-pct">{a.percent}%</span>
                           <span className="stat-card">{a.name}</span>
@@ -663,7 +724,30 @@ function GameBoard({ game }) {
             <perf.Icon color={perf.color} />
             <span className="result-text" style={{ color: perf.color }}>{perf.rating}</span>
             <span className="result-score">{gameState.score}/9</span>
+            {getUniquenessScore() !== null && (
+              <span className="uniqueness-score">
+                Rarity: <strong>{getUniquenessScore()}</strong>
+              </span>
+            )}
           </div>
+          
+          {/* Most/Least Common Toggle */}
+          {stats && (
+            <div className="rarity-toggle">
+              <button 
+                className={`toggle-btn ${!showRarest ? 'active' : ''}`}
+                onClick={() => setShowRarest(false)}
+              >
+                Most Common
+              </button>
+              <button 
+                className={`toggle-btn ${showRarest ? 'active' : ''}`}
+                onClick={() => setShowRarest(true)}
+              >
+                Least Common
+              </button>
+            </div>
+          )}
           
           <div className="share-row">
             <div className="share-grid">
