@@ -46,6 +46,33 @@ function getFormattedDate() {
   });
 }
 
+// Get time until next puzzle (midnight UTC)
+function getTimeUntilNextPuzzle() {
+  const now = new Date();
+  const tomorrow = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0, 0, 0
+  ));
+  const diff = tomorrow - now;
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  return { hours, minutes, seconds };
+}
+
+// Get performance rating based on score
+function getPerformanceRating(score) {
+  if (score === 9) return { rating: 'PERFECT', emoji: '🏆', color: '#ffd700' };
+  if (score >= 7) return { rating: 'GREAT', emoji: '🌟', color: '#4ade80' };
+  if (score >= 5) return { rating: 'GOOD', emoji: '👍', color: '#60a5fa' };
+  if (score >= 3) return { rating: 'OKAY', emoji: '😅', color: '#f59e0b' };
+  return { rating: 'TOUGH', emoji: '💪', color: '#ef4444' };
+}
+
 // Puzzle generation
 async function generatePuzzle(game, seed, hiddenCategoryIds = []) {
   let allCategories = game.getAllCategories();
@@ -168,6 +195,7 @@ function GameBoard({ game }) {
     selectedCell: null,
     usedCards: new Set(),
     gameOver: false,
+    statsRecorded: false,
   });
   const [message, setMessage] = useState(null);
   const [guessInput, setGuessInput] = useState('');
@@ -175,11 +203,23 @@ function GameBoard({ game }) {
   const [stats, setStats] = useState(null);
   const [cardPreview, setCardPreview] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [countdown, setCountdown] = useState(getTimeUntilNextPuzzle());
   
   const inputRef = useRef(null);
   const lookupTimeout = useRef(null);
   
   const gameId = game.config.id;
+
+  // Countdown timer
+  useEffect(() => {
+    if (!gameState.gameOver) return;
+    
+    const timer = setInterval(() => {
+      setCountdown(getTimeUntilNextPuzzle());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [gameState.gameOver]);
 
   // Initialize game
   useEffect(() => {
@@ -227,6 +267,7 @@ function GameBoard({ game }) {
           selectedCell: null,
           usedCards: new Set(),
           gameOver: false,
+          statsRecorded: false,
         });
       }
       
@@ -336,11 +377,16 @@ function GameBoard({ game }) {
         newBoard[prev.selectedCell] = card;
         const newScore = prev.score + 1;
         const isWin = newScore === 9;
+        const isGameOver = isWin || newGuesses >= 9;
         
         if (isWin) {
-          showMessage(`🎉 Perfect! Completed in ${newGuesses} guesses!`, 'win', true);
+          const perf = getPerformanceRating(newScore);
+          showMessage(`${perf.emoji} ${perf.rating}! ${newScore}/9`, 'win', true);
+        } else if (isGameOver) {
+          const perf = getPerformanceRating(newScore);
+          showMessage(`${perf.emoji} ${perf.rating}! Score: ${newScore}/9`, 'info', true);
         } else {
-          showMessage(isCheat ? '🎮 Cheat activated!' : `Correct! ${card.name}`, 'success');
+          showMessage(isCheat ? '🎮 Cheat activated!' : `✓ ${card.name}`, 'success');
         }
         
         return {
@@ -350,14 +396,16 @@ function GameBoard({ game }) {
           score: newScore,
           selectedCell: null,
           usedCards: newUsedCards,
-          gameOver: isWin || newGuesses >= 9,
+          gameOver: isGameOver,
+          statsRecorded: false,
         };
       } else {
-        showMessage(`Wrong! ${card.name} - Doesn't match criteria`, 'error');
+        showMessage(`✗ ${card.name} doesn't match`, 'error');
         
         const isGameOver = newGuesses >= 9;
         if (isGameOver) {
-          showMessage(`Game Over! Score: ${prev.score}/9`, 'error', true);
+          const perf = getPerformanceRating(prev.score);
+          showMessage(`${perf.emoji} ${perf.rating}! Score: ${prev.score}/9`, 'info', true);
         }
         
         return {
@@ -365,6 +413,7 @@ function GameBoard({ game }) {
           guesses: newGuesses,
           gameOver: isGameOver,
           selectedCell: isGameOver ? null : prev.selectedCell,
+          statsRecorded: false,
         };
       }
     });
@@ -374,18 +423,22 @@ function GameBoard({ game }) {
     setSubmitting(false);
   }, [gameState, guessInput, showMessage, game, gameId, submitting, cardPreview]);
 
-  // Load stats when game ends (with delay to ensure Firebase sync)
+  // Load community stats when game ends
   useEffect(() => {
-    if (gameState.gameOver) {
-      // Small delay to allow Firebase to sync the last guess
+    if (gameState.gameOver && !gameState.statsRecorded) {
+      // Mark stats as recorded
+      setGameState(prev => ({ ...prev, statsRecorded: true }));
+      
+      // Load community stats with delay
       const timer = setTimeout(() => {
         getAllStats(gameId).then(setStats);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [gameState.gameOver, gameId]);
+  }, [gameState.gameOver, gameState.statsRecorded, gameId]);
 
   const getShareText = useCallback(() => {
+    const perf = getPerformanceRating(gameState.score);
     const emojis = gameState.board.map((cell) => cell ? '🟩' : '⬛');
     const grid = [
       emojis.slice(0, 3).join(''),
@@ -393,8 +446,8 @@ function GameBoard({ game }) {
       emojis.slice(6, 9).join(''),
     ].join('\n');
     
-    return `${game.config.shortName} ${getFormattedDate()}\n${gameState.score}/9 in ${gameState.guesses} guesses\n\n${grid}\n\ntcgdoku.netlify.app/${gameId}`;
-  }, [gameState, game.config.shortName, gameId]);
+    return `${game.config.shortName} ${getFormattedDate()}\n${perf.emoji} ${gameState.score}/9\n\n${grid}\n\nPlay at tcgdoku.netlify.app`;
+  }, [gameState, game.config.shortName]);
 
   const shareResults = useCallback(() => {
     const text = getShareText();
@@ -451,12 +504,6 @@ function GameBoard({ game }) {
         <div className={`stat ${gameId}`}>Guesses: <span>{gameState.guesses}</span>/9</div>
         <div className={`stat ${gameId}`}>Score: <span>{gameState.score}</span>/9</div>
       </div>
-
-      {gameState.gameOver && stats && (
-        <div className="total-plays">
-          {stats.totalGuesses || 0} total guesses today
-        </div>
-      )}
 
       {message && (
         <div className={`message ${message.type} ${gameId}`}>
@@ -609,17 +656,37 @@ function GameBoard({ game }) {
         )}
       </div>
 
-      <div className="buttons">
-        {gameState.gameOver && (
-          <button className={`btn-primary ${gameId}`} onClick={shareResults}>
+      {/* Game Over Panel */}
+      {gameState.gameOver && (
+        <div className="game-over-panel">
+          <div className="result-banner" style={{ borderColor: getPerformanceRating(gameState.score).color }}>
+            <span className="result-emoji">{getPerformanceRating(gameState.score).emoji}</span>
+            <span className="result-rating">{getPerformanceRating(gameState.score).rating}</span>
+            <span className="result-score">{gameState.score}/9</span>
+          </div>
+          
+          {stats && (
+            <div className="community-stats">
+              <span className="players-today">{stats.totalGuesses || 0} guesses from players today</span>
+            </div>
+          )}
+          
+          <div className="share-preview">
+            {getShareText()}
+          </div>
+          
+          <button className={`btn-primary ${gameId} share-btn`} onClick={shareResults}>
             Share Results
           </button>
-        )}
-      </div>
-
-      {gameState.gameOver && (
-        <div className="share-result">
-          {getShareText()}
+          
+          <div className="next-puzzle">
+            <span className="next-label">Next puzzle in</span>
+            <span className="countdown">
+              {String(countdown.hours).padStart(2, '0')}:
+              {String(countdown.minutes).padStart(2, '0')}:
+              {String(countdown.seconds).padStart(2, '0')}
+            </span>
+          </div>
         </div>
       )}
 

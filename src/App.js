@@ -28,23 +28,21 @@ const GAME_INFO = {
 // Home Page
 function Home() {
   const [communityPuzzles, setCommunityPuzzles] = useState([]);
-  const [loadingPuzzles, setLoadingPuzzles] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [gameImages, setGameImages] = useState({ mtg: '', fab: '', gymnastics: '' });
-  const [hiddenGames, setHiddenGames] = useState([]);
+  const [hiddenGames, setHiddenGames] = useState(null); // null = not loaded yet
 
   useEffect(() => {
     async function loadData() {
       try {
-        // Load community puzzles
-        const puzzlesRef = collection(db, 'customPuzzles');
-        const q = query(puzzlesRef, orderBy('createdAt', 'desc'), limit(6));
-        const snapshot = await getDocs(q);
-        
-        const puzzles = [];
-        snapshot.forEach(doc => {
-          puzzles.push({ id: doc.id, ...doc.data() });
-        });
-        setCommunityPuzzles(puzzles);
+        // Load hidden games FIRST (priority)
+        const hiddenRef = doc(db, 'settings', 'hiddenGames');
+        const hiddenSnap = await getDoc(hiddenRef);
+        if (hiddenSnap.exists()) {
+          setHiddenGames(hiddenSnap.data().games || []);
+        } else {
+          setHiddenGames([]); // No hidden games
+        }
         
         // Load game images
         const settingsRef = doc(db, 'settings', 'gameImages');
@@ -58,23 +56,30 @@ function Home() {
           });
         }
         
-        // Load hidden games
-        const hiddenRef = doc(db, 'settings', 'hiddenGames');
-        const hiddenSnap = await getDoc(hiddenRef);
-        if (hiddenSnap.exists()) {
-          setHiddenGames(hiddenSnap.data().games || []);
-        }
+        // Load community puzzles
+        const puzzlesRef = collection(db, 'customPuzzles');
+        const q = query(puzzlesRef, orderBy('createdAt', 'desc'), limit(6));
+        const snapshot = await getDocs(q);
+        
+        const puzzles = [];
+        snapshot.forEach(doc => {
+          puzzles.push({ id: doc.id, ...doc.data() });
+        });
+        setCommunityPuzzles(puzzles);
       } catch (error) {
         console.error('Error loading data:', error);
+        setHiddenGames([]); // Default to showing all on error
       }
-      setLoadingPuzzles(false);
+      setLoading(false);
     }
     
     loadData();
   }, []);
 
-  // Filter out hidden games
-  const visibleGames = Object.keys(games).filter(id => !hiddenGames.includes(id));
+  // Filter out hidden games (only after loaded)
+  const visibleGames = hiddenGames !== null 
+    ? Object.keys(games).filter(id => !hiddenGames.includes(id))
+    : [];
 
   return (
     <div className="app">
@@ -84,21 +89,27 @@ function Home() {
         
         {/* Daily Puzzles */}
         <h2 className="section-title">Daily Puzzles</h2>
-        <div className="game-grid">
-          {visibleGames.map(gameId => (
-            <Link key={gameId} to={`/${gameId}`} className={`game-card ${gameId}`}>
-              {gameImages[gameId] && (
-                <div className="game-card-image">
-                  <img src={gameImages[gameId]} alt={GAME_INFO[gameId].name} />
+        {hiddenGames === null ? (
+          <div className="loading-games">
+            <div className="spinner"></div>
+          </div>
+        ) : (
+          <div className="game-grid">
+            {visibleGames.map(gameId => (
+              <Link key={gameId} to={`/${gameId}`} className={`game-card ${gameId}`}>
+                {gameImages[gameId] && (
+                  <div className="game-card-image">
+                    <img src={gameImages[gameId]} alt={GAME_INFO[gameId].name} />
+                  </div>
+                )}
+                <div className="game-card-content">
+                  <h2>{GAME_INFO[gameId].name}</h2>
+                  <p>{GAME_INFO[gameId].description}</p>
                 </div>
-              )}
-              <div className="game-card-content">
-                <h2>{GAME_INFO[gameId].name}</h2>
-                <p>{GAME_INFO[gameId].description}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Create Your Own */}
         <div className="create-section">
@@ -109,7 +120,7 @@ function Home() {
 
         {/* Community Puzzles */}
         <h2 className="section-title">Community Puzzles</h2>
-        {loadingPuzzles ? (
+        {loading ? (
           <div className="loading-small">Loading puzzles...</div>
         ) : communityPuzzles.length > 0 ? (
           <div className="community-grid">
