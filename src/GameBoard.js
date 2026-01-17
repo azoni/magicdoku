@@ -172,6 +172,11 @@ async function generatePuzzle(game, seed, hiddenCategoryIds = []) {
     attempts++;
   }
   
+  // Safeguard: if we couldn't generate enough categories, log error
+  if (rowCategories.length !== 3 || colCategories.length !== 3) {
+    console.error('Failed to generate valid puzzle. Row categories:', rowCategories.length, 'Col categories:', colCategories.length);
+  }
+  
   return { rowCategories, colCategories };
 }
 
