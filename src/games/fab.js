@@ -214,6 +214,16 @@ export async function cardMatchesCategory(card, category) {
   return cardMatchesFilter(card, category);
 }
 
+// Alias for GameBoard compatibility
+export async function lookupCard(query) {
+  return getCardByName(query);
+}
+
+// Alias for GameBoard compatibility
+export function checkCard(card, category) {
+  return cardMatchesFilter(card, category);
+}
+
 export function getCardImage(card) {
   // Use defaultImage or first printing identifier
   const imageId = card.defaultImage || card.printings?.[0]?.identifier;

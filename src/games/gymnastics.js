@@ -332,6 +332,20 @@ export async function cardMatchesCategory(skill, category) {
   return false;
 }
 
+// Alias for GameBoard compatibility
+export async function lookupCard(query) {
+  return getCardByName(query);
+}
+
+// Alias for GameBoard compatibility
+export function checkCard(skill, category) {
+  if (!skill || !category) return false;
+  if (category.filter) {
+    return category.filter(skill);
+  }
+  return false;
+}
+
 // Check if valid skill exists for category combination
 export async function checkValidCardExists(cat1, cat2) {
   // First check if these categories are incompatible

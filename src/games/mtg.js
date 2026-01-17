@@ -156,6 +156,23 @@ export async function getCardByName(name) {
   }
 }
 
+// Lookup card by name (fuzzy search)
+export async function lookupCard(query) {
+  try {
+    // Try fuzzy search first
+    const response = await rateLimitedFetch(
+      `${SCRYFALL_NAMED}?fuzzy=${encodeURIComponent(query)}`
+    );
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error looking up card:', error);
+    return null;
+  }
+}
+
 export async function cardMatchesCategory(card, category) {
   const query = `!"${card.name}" ${category.query}`;
   try {
@@ -167,6 +184,11 @@ export async function cardMatchesCategory(card, category) {
   } catch (error) {
     return false;
   }
+}
+
+// Alias for GameBoard compatibility
+export function checkCard(card, category) {
+  return cardMatchesCategory(card, category);
 }
 
 export function getCardImage(card) {
