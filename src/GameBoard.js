@@ -3,6 +3,67 @@ import { Link } from 'react-router-dom';
 import { db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
+// SVG Icons for performance ratings
+const TrophyIcon = ({ color = '#ffd700' }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M6 9H4.5a1.5 1.5 0 0 1-1.5-1.5V6a1.5 1.5 0 0 1 1.5-1.5H6"/>
+    <path d="M18 9h1.5A1.5 1.5 0 0 0 21 7.5V6a1.5 1.5 0 0 0-1.5-1.5H18"/>
+    <path d="M6 4.5h12v6a6 6 0 0 1-12 0v-6z"/>
+    <path d="M12 16.5v3"/>
+    <path d="M8 21h8"/>
+  </svg>
+);
+
+const StarIcon = ({ color = '#4ade80' }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1">
+    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+  </svg>
+);
+
+const ThumbsUpIcon = ({ color = '#60a5fa' }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+  </svg>
+);
+
+const MehIcon = ({ color = '#f59e0b' }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="8" y1="15" x2="16" y2="15"/>
+    <line x1="9" y1="9" x2="9.01" y2="9"/>
+    <line x1="15" y1="9" x2="15.01" y2="9"/>
+  </svg>
+);
+
+const FlexIcon = ({ color = '#ef4444' }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+    <line x1="4" y1="22" x2="4" y2="15"/>
+  </svg>
+);
+
+const HelpIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+);
+
 // Seeded random number generator
 function seededRandom(seed) {
   const x = Math.sin(seed++) * 10000;
@@ -19,13 +80,11 @@ function shuffleWithSeed(array, seed) {
   return arr;
 }
 
-// Get today's date string for puzzle ID (UTC to ensure same puzzle globally)
 function getTodayString() {
   const today = new Date();
   return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
 }
 
-// Get today's seed (changes daily)
 function getDailySeed() {
   const dateString = getTodayString();
   let hash = 0;
@@ -39,14 +98,12 @@ function getDailySeed() {
 
 function getFormattedDate() {
   return new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
+    weekday: 'short', 
+    month: 'short', 
     day: 'numeric' 
   });
 }
 
-// Get time until next puzzle (midnight UTC)
 function getTimeUntilNextPuzzle() {
   const now = new Date();
   const tomorrow = new Date(Date.UTC(
@@ -64,74 +121,73 @@ function getTimeUntilNextPuzzle() {
   return { hours, minutes, seconds };
 }
 
-// Get performance rating based on score
 function getPerformanceRating(score) {
-  if (score === 9) return { rating: 'PERFECT', emoji: '🏆', color: '#ffd700' };
-  if (score >= 7) return { rating: 'GREAT', emoji: '🌟', color: '#4ade80' };
-  if (score >= 5) return { rating: 'GOOD', emoji: '👍', color: '#60a5fa' };
-  if (score >= 3) return { rating: 'OKAY', emoji: '😅', color: '#f59e0b' };
-  return { rating: 'TOUGH', emoji: '💪', color: '#ef4444' };
+  if (score === 9) return { rating: 'PERFECT', Icon: TrophyIcon, color: '#ffd700' };
+  if (score >= 7) return { rating: 'GREAT', Icon: StarIcon, color: '#4ade80' };
+  if (score >= 5) return { rating: 'GOOD', Icon: ThumbsUpIcon, color: '#60a5fa' };
+  if (score >= 3) return { rating: 'OKAY', Icon: MehIcon, color: '#f59e0b' };
+  return { rating: 'TOUGH', Icon: FlexIcon, color: '#ef4444' };
 }
 
 // Puzzle generation
 async function generatePuzzle(game, seed, hiddenCategoryIds = []) {
   let allCategories = game.getAllCategories();
   
-  // Filter out hidden categories
-  if (hiddenCategoryIds.length > 0) {
-    allCategories = allCategories.filter(cat => !hiddenCategoryIds.includes(cat.id));
-  }
+  allCategories = allCategories.filter(cat => !hiddenCategoryIds.includes(cat.id));
   
   const shuffled = shuffleWithSeed(allCategories, seed);
   
+  const checkValid = game.checkValidCardExists || (() => true);
+  
+  let rowCategories = [];
+  let colCategories = [];
   let attempts = 0;
-  const maxAttempts = 30;
+  const maxAttempts = 100;
   
   while (attempts < maxAttempts) {
-    const startIdx = (attempts * 6) % Math.max(1, shuffled.length - 6);
-    const rowCats = shuffled.slice(startIdx, startIdx + 3);
-    const colCats = shuffled.slice(startIdx + 3, startIdx + 6);
+    const candidates = shuffleWithSeed([...shuffled], seed + attempts);
+    rowCategories = [];
+    colCategories = [];
     
-    if (rowCats.length < 3 || colCats.length < 3) {
-      attempts++;
-      continue;
-    }
-    
-    // Validate all 9 combinations
-    const validationPromises = [];
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
-        validationPromises.push(game.checkValidCardExists(rowCats[r], colCats[c]));
+    for (const cat of candidates) {
+      if (rowCategories.length < 3 && !rowCategories.some(c => c.group === cat.group)) {
+        rowCategories.push(cat);
+      } else if (colCategories.length < 3 && !colCategories.some(c => c.group === cat.group) && !rowCategories.includes(cat)) {
+        colCategories.push(cat);
       }
+      if (rowCategories.length === 3 && colCategories.length === 3) break;
     }
     
-    const results = await Promise.all(validationPromises);
-    const allValid = results.every(Boolean);
-    
-    if (allValid) {
-      return { rowCategories: rowCats, colCategories: colCats };
+    if (rowCategories.length === 3 && colCategories.length === 3) {
+      let allValid = true;
+      for (let row = 0; row < 3 && allValid; row++) {
+        for (let col = 0; col < 3 && allValid; col++) {
+          if (!checkValid(rowCategories[row], colCategories[col])) {
+            allValid = false;
+          }
+        }
+      }
+      if (allValid) break;
     }
-    
     attempts++;
   }
   
-  // Fallback
-  return game.getFallbackCategories();
+  return { rowCategories, colCategories };
 }
 
-// Firebase: Record a guess
+// Firebase functions
 async function recordGuess(gameId, cellIndex, cardName, isCorrect) {
   const dateStr = getTodayString();
   const docId = `${gameId}-${dateStr}`;
-  const cellKey = `cell${cellIndex}`;
-  const cardKey = cardName.toLowerCase().replace(/[^a-z0-9]/g, '_');
   
   try {
     const docRef = doc(db, 'guesses', docId);
     const docSnap = await getDoc(docRef);
     
+    const cellKey = `cell${cellIndex}`;
+    const cardKey = cardName.replace(/[./#$[\]]/g, '_').substring(0, 50);
+    
     if (!docSnap.exists()) {
-      // Create new document
       await setDoc(docRef, {
         gameId,
         date: dateStr,
@@ -145,7 +201,6 @@ async function recordGuess(gameId, cellIndex, cardName, isCorrect) {
         }
       });
     } else {
-      // Update existing
       const data = docSnap.data();
       const cellData = data[cellKey] || { totalGuesses: 0, correctGuesses: 0, cards: {} };
       const cardData = cellData.cards?.[cardKey] || { name: cardName, count: 0, correct: isCorrect };
@@ -166,7 +221,6 @@ async function recordGuess(gameId, cellIndex, cardName, isCorrect) {
   }
 }
 
-// Firebase: Get all stats for today
 async function getAllStats(gameId) {
   const dateStr = getTodayString();
   const docId = `${gameId}-${dateStr}`;
@@ -204,6 +258,9 @@ function GameBoard({ game }) {
   const [cardPreview, setCardPreview] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [countdown, setCountdown] = useState(getTimeUntilNextPuzzle());
+  const [showHelp, setShowHelp] = useState(false);
+  const [showInputModal, setShowInputModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const inputRef = useRef(null);
   const lookupTimeout = useRef(null);
@@ -227,7 +284,6 @@ function GameBoard({ game }) {
       setLoading(true);
       const seed = getDailySeed();
       
-      // Load hidden categories from Firebase
       let hiddenCategoryIds = [];
       try {
         const hiddenRef = doc(db, 'settings', 'hiddenCategories');
@@ -241,7 +297,6 @@ function GameBoard({ game }) {
       
       const puzzle = await generatePuzzle(game, seed, hiddenCategoryIds);
       
-      // Try to load saved state
       const savedState = localStorage.getItem(`tcgdoku-${gameId}-${seed}`);
       if (savedState) {
         const parsed = JSON.parse(savedState);
@@ -252,7 +307,6 @@ function GameBoard({ game }) {
           usedCards: new Set(parsed.usedCards || []),
         });
         
-        // Load stats if game is over
         if (parsed.gameOver) {
           const allStats = await getAllStats(gameId);
           setStats(allStats);
@@ -296,31 +350,51 @@ function GameBoard({ game }) {
     }
   }, []);
 
+  // Cell selection - open input modal
   const selectCell = useCallback((idx) => {
     if (gameState.gameOver || gameState.board[idx] !== null) return;
     
     setGameState(prev => ({ ...prev, selectedCell: idx }));
     setGuessInput('');
     setCardPreview(null);
-    
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setShowInputModal(true);
   }, [gameState.gameOver, gameState.board]);
 
-  // Lookup card as user types (debounced)
+  // Close modal
+  const closeInputModal = useCallback(() => {
+    setShowInputModal(false);
+    setGameState(prev => ({ ...prev, selectedCell: null }));
+    setGuessInput('');
+    setCardPreview(null);
+  }, []);
+
+  // Card lookup with debounce
   useEffect(() => {
     if (lookupTimeout.current) {
       clearTimeout(lookupTimeout.current);
     }
     
-    if (!guessInput.trim() || guessInput.length < 3) {
+    if (guessInput.length < 3) {
       setCardPreview(null);
+      setLookingUp(false);
+      return;
+    }
+    
+    if (['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase())) {
+      setCardPreview(null);
+      setLookingUp(false);
       return;
     }
     
     setLookingUp(true);
+    
     lookupTimeout.current = setTimeout(async () => {
-      const card = await game.getCardByName(guessInput.trim());
-      setCardPreview(card);
+      try {
+        const card = await game.lookupCard(guessInput.trim());
+        setCardPreview(card);
+      } catch (error) {
+        setCardPreview(null);
+      }
       setLookingUp(false);
     }, 300);
     
@@ -331,41 +405,40 @@ function GameBoard({ game }) {
     };
   }, [guessInput, game]);
 
+  // Submit guess
   const submitGuess = useCallback(async () => {
     if (gameState.selectedCell === null || gameState.gameOver || !guessInput.trim() || submitting) return;
     
-    // CHEAT CODE - remove later
-    const cheatInput = guessInput.trim().toLowerCase();
-    const isCheat = cheatInput === 'thisansweriscorrect' || cheatInput === 'cheat' || cheatInput === 'win';
-    console.log('Submit:', { input: guessInput, isCheat, hasPreview: !!cardPreview });
+    const isCheat = ['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase());
     
-    if (!cardPreview && !isCheat) {
-      showMessage('Card not found. Check spelling!', 'error');
+    if (!isCheat && !cardPreview) {
+      showMessage('Card not found', 'error');
+      return;
+    }
+    
+    const card = isCheat ? { name: `[CHEAT-${Date.now()}]` } : cardPreview;
+    
+    if (!isCheat && gameState.usedCards.has(card.name.toLowerCase())) {
+      showMessage(`Already used ${card.name}!`, 'error');
       return;
     }
     
     setSubmitting(true);
     
-    // For cheat, create a fake card
-    const card = isCheat ? { name: `✓ Cell ${gameState.selectedCell + 1}` } : cardPreview;
-    const isCorrect = isCheat ? true : await (async () => {
-      const row = Math.floor(gameState.selectedCell / 3);
-      const col = gameState.selectedCell % 3;
-      const rowCat = gameState.rowCategories[row];
-      const colCat = gameState.colCategories[col];
-      
-      const [matchesRow, matchesCol] = await Promise.all([
-        game.cardMatchesCategory(card, rowCat),
-        game.cardMatchesCategory(card, colCat),
-      ]);
-      
-      return matchesRow && matchesCol;
-    })();
+    const row = Math.floor(gameState.selectedCell / 3);
+    const col = gameState.selectedCell % 3;
+    const rowCat = gameState.rowCategories[row];
+    const colCat = gameState.colCategories[col];
     
-    // Record guess to Firebase (skip for cheat)
+    const matchesRow = isCheat || game.checkCard(card, rowCat);
+    const matchesCol = isCheat || game.checkCard(card, colCat);
+    const isCorrect = matchesRow && matchesCol;
+    
     if (!isCheat) {
       await recordGuess(gameId, gameState.selectedCell, card.name, isCorrect);
     }
+    
+    const willBeGameOver = gameState.guesses + 1 >= 9 || (isCorrect && gameState.score + 1 === 9);
     
     setGameState(prev => {
       const newGuesses = prev.guesses + 1;
@@ -379,14 +452,8 @@ function GameBoard({ game }) {
         const isWin = newScore === 9;
         const isGameOver = isWin || newGuesses >= 9;
         
-        if (isWin) {
-          const perf = getPerformanceRating(newScore);
-          showMessage(`${perf.emoji} ${perf.rating}! ${newScore}/9`, 'win', true);
-        } else if (isGameOver) {
-          const perf = getPerformanceRating(newScore);
-          showMessage(`${perf.emoji} ${perf.rating}! Score: ${newScore}/9`, 'info', true);
-        } else {
-          showMessage(isCheat ? '🎮 Cheat activated!' : `✓ ${card.name}`, 'success');
+        if (!isGameOver) {
+          showMessage(`✓ ${card.name}`, 'success');
         }
         
         return {
@@ -400,13 +467,9 @@ function GameBoard({ game }) {
           statsRecorded: false,
         };
       } else {
-        showMessage(`✗ ${card.name} doesn't match`, 'error');
+        showMessage(`✗ ${card.name}`, 'error');
         
         const isGameOver = newGuesses >= 9;
-        if (isGameOver) {
-          const perf = getPerformanceRating(prev.score);
-          showMessage(`${perf.emoji} ${perf.rating}! Score: ${prev.score}/9`, 'info', true);
-        }
         
         return {
           ...prev,
@@ -421,15 +484,19 @@ function GameBoard({ game }) {
     setGuessInput('');
     setCardPreview(null);
     setSubmitting(false);
+    
+    // Close modal on correct answer or game over
+    if (isCorrect || willBeGameOver) {
+      setShowInputModal(false);
+    }
   }, [gameState, guessInput, showMessage, game, gameId, submitting, cardPreview]);
 
   // Load community stats when game ends
   useEffect(() => {
     if (gameState.gameOver && !gameState.statsRecorded) {
-      // Mark stats as recorded
+      setShowInputModal(false);
       setGameState(prev => ({ ...prev, statsRecorded: true }));
       
-      // Load community stats with delay
       const timer = setTimeout(() => {
         getAllStats(gameId).then(setStats);
       }, 500);
@@ -439,24 +506,23 @@ function GameBoard({ game }) {
 
   const getShareText = useCallback(() => {
     const perf = getPerformanceRating(gameState.score);
-    const emojis = gameState.board.map((cell) => cell ? '🟩' : '⬛');
     const grid = [
-      emojis.slice(0, 3).join(''),
-      emojis.slice(3, 6).join(''),
-      emojis.slice(6, 9).join(''),
+      gameState.board.slice(0, 3).map(c => c ? '🟩' : '⬛').join(''),
+      gameState.board.slice(3, 6).map(c => c ? '🟩' : '⬛').join(''),
+      gameState.board.slice(6, 9).map(c => c ? '🟩' : '⬛').join(''),
     ].join('\n');
     
-    return `${game.config.shortName} ${getFormattedDate()}\n${perf.emoji} ${gameState.score}/9\n\n${grid}\n\nPlay at tcgdoku.netlify.app`;
+    return `${game.config.shortName} ${getFormattedDate()}\n${gameState.score}/9 ${perf.rating}\n\n${grid}\n\ntcgdoku.netlify.app`;
   }, [gameState, game.config.shortName]);
 
-  const shareResults = useCallback(() => {
+  const copyResults = useCallback(() => {
     const text = getShareText();
     navigator.clipboard.writeText(text).then(() => {
-      showMessage('Copied to clipboard!', 'success');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
-  }, [getShareText, showMessage]);
+  }, [getShareText]);
 
-  // Get top answers for a cell
   const getTopAnswers = (cellIndex) => {
     if (!stats) return [];
     const cellData = stats[`cell${cellIndex}`];
@@ -468,61 +534,75 @@ function GameBoard({ game }) {
     return Object.values(cellData.cards)
       .filter(c => c.correct)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 3)
+      .slice(0, 2)
       .map(c => ({
         name: c.name,
         percent: Math.round((c.count / totalCorrect) * 100),
-        count: c.count,
-        total: totalCorrect,
       }));
   };
 
   if (loading) {
     return (
-      <div className="app">
-        <header>
-          <Link to="/" className="back-link">← All Games</Link>
+      <div className="app compact">
+        <header className="compact-header">
+          <Link to="/" className="back-link">←</Link>
           <h1 className={`${gameId}-title`}>{game.config.shortName.toUpperCase()}</h1>
+          <div style={{ width: 32 }} />
         </header>
         <div className="loading">
           <div className={`spinner ${gameId}`}></div>
-          <p>Generating today's puzzle...</p>
         </div>
       </div>
     );
   }
 
+  const perf = getPerformanceRating(gameState.score);
+
   return (
-    <div className="app">
-      <header>
-        <Link to="/" className="back-link">← All Games</Link>
-        <h1 className={`${gameId}-title`}>{game.config.shortName.toUpperCase()}</h1>
-        <p className="date">{getFormattedDate()}</p>
+    <div className="app compact">
+      <header className="compact-header">
+        <Link to="/" className="back-link">←</Link>
+        <div className="header-center">
+          <h1 className={`${gameId}-title`}>{game.config.shortName.toUpperCase()}</h1>
+          <span className="date-small">{getFormattedDate()}</span>
+        </div>
+        <button className="help-btn" onClick={() => setShowHelp(true)} aria-label="How to play">
+          <HelpIcon />
+        </button>
       </header>
 
-      <div className="stats">
-        <div className={`stat ${gameId}`}>Guesses: <span>{gameState.guesses}</span>/9</div>
-        <div className={`stat ${gameId}`}>Score: <span>{gameState.score}</span>/9</div>
+      {/* Stats Bar */}
+      <div className="stats-bar">
+        <div className={`stat-pill ${gameId}`}>
+          <span className="stat-label">Guesses</span>
+          <span className="stat-value">{gameState.guesses}/9</span>
+        </div>
+        <div className={`stat-pill ${gameId}`}>
+          <span className="stat-label">Score</span>
+          <span className="stat-value">{gameState.score}/9</span>
+        </div>
       </div>
 
-      {message && (
-        <div className={`message ${message.type} ${gameId}`}>
+      {/* Message */}
+      {message && !showInputModal && (
+        <div className={`message-toast ${message.type} ${gameId}`}>
           {message.text}
         </div>
       )}
 
-      <div className="game-board">
+      {/* Game Board */}
+      <div className="game-board compact">
         <div className="corner"></div>
         
         {gameState.colCategories.map((cat, idx) => (
-          <div key={`col-${idx}`} className={`header-cell ${cat.colorClass || ''}`}>
+          <div key={`col-${idx}`} className={`header-cell compact ${cat.colorClass || ''}`}>
             {cat.label}
           </div>
         ))}
         
         {[0, 1, 2].map(row => (
           <React.Fragment key={`row-${row}`}>
-            <div className={`header-cell ${gameState.rowCategories[row]?.colorClass || ''}`}>
+            <div className={`header-cell compact ${gameState.rowCategories[row]?.colorClass || ''}`}>
               {gameState.rowCategories[row]?.label}
             </div>
             
@@ -535,7 +615,7 @@ function GameBoard({ game }) {
               return (
                 <div
                   key={`cell-${idx}`}
-                  className={`cell ${isSelected ? `selected ${gameId}` : ''} ${card ? 'solved' : ''}`}
+                  className={`cell compact ${isSelected ? `selected ${gameId}` : ''} ${card ? 'solved' : ''} ${gameState.gameOver && !card ? 'missed' : ''}`}
                   onClick={() => selectCell(idx)}
                 >
                   {card ? (
@@ -552,32 +632,23 @@ function GameBoard({ game }) {
                         />
                       ) : null}
                       <div className="card-placeholder" style={{ display: game.getCardImage(card) ? 'none' : 'flex' }}>
-                        <span className="placeholder-icon">🃏</span>
                         <span className="placeholder-name">{card.name}</span>
                       </div>
-                      <div className="card-name">{card.name}</div>
-                      {gameState.gameOver && topAnswers.length > 0 && (
-                        <div className="cell-stats">
-                          {topAnswers.map((a, i) => (
-                            <div key={i} className="stat-line" title={`${a.count} of ${a.total} players`}>
-                              <span className="stat-percent">{a.percent}%</span>
-                              <span className="stat-name">{a.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="card-name-overlay">{card.name}</div>
                     </>
-                  ) : gameState.gameOver && topAnswers.length > 0 ? (
-                    <div className="cell-stats missed">
-                      <div className="missed-label">Top Answers:</div>
+                  ) : null}
+                  
+                  {/* Stats overlay for game over */}
+                  {gameState.gameOver && topAnswers.length > 0 && (
+                    <div className="cell-stats-overlay">
                       {topAnswers.map((a, i) => (
-                        <div key={i} className="stat-line" title={`${a.count} of ${a.total} players`}>
-                          <span className="stat-percent">{a.percent}%</span>
-                          <span className="stat-name">{a.name}</span>
+                        <div key={i} className="stat-row">
+                          <span className="stat-pct">{a.percent}%</span>
+                          <span className="stat-card">{a.name}</span>
                         </div>
                       ))}
                     </div>
-                  ) : null}
+                  )}
                 </div>
               );
             })}
@@ -585,120 +656,125 @@ function GameBoard({ game }) {
         ))}
       </div>
 
-      <div className={`input-section ${gameState.selectedCell === null ? 'hidden' : ''}`}>
-        <h3 className={gameId}>Enter a card name:</h3>
-        {gameState.selectedCell !== null && (
-          <p className="criteria-hint">
-            Must match: <strong>{gameState.rowCategories[Math.floor(gameState.selectedCell / 3)]?.label}</strong>
-            {' + '}
-            <strong>{gameState.colCategories[gameState.selectedCell % 3]?.label}</strong>
-          </p>
-        )}
-        {gameId === 'fab' && (
-          <p className="color-hint">Tip: Add color for pitch cards (e.g., "Bare Fangs Yellow")</p>
-        )}
-        <form className="guess-form" onSubmit={(e) => { e.preventDefault(); submitGuess(); }}>
-          <input
-            ref={inputRef}
-            type="text"
-            className={`search-input ${gameId} ${cardPreview ? 'valid' : ''}`}
-            placeholder="Type card name and press Enter..."
-            value={guessInput}
-            onChange={(e) => setGuessInput(e.target.value)}
-            disabled={gameState.gameOver || submitting}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-          />
-          <button 
-            type="submit" 
-            className={`btn-primary ${gameId}`}
-            disabled={!guessInput.trim() || submitting || (!cardPreview && !['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase()))}
-          >
-            {submitting ? '...' : 'Submit'}
-          </button>
-        </form>
-        
-        {/* Card Preview */}
-        {guessInput.length >= 3 && (
-          <div className="card-preview-container">
-            {['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase()) ? (
-              <div className="card-preview found">
-                <div className="preview-info">
-                  <span className="preview-name">🎮 CHEAT MODE</span>
-                  <span className="preview-hint">Press Enter to auto-win this cell</span>
-                </div>
-              </div>
-            ) : lookingUp ? (
-              <div className="card-preview loading">Searching...</div>
-            ) : cardPreview ? (
-              <div className="card-preview found">
-                {game.getCardImage(cardPreview) && (
-                  <img 
-                    src={game.getCardImage(cardPreview)} 
-                    alt={cardPreview.name}
-                    className="preview-image"
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                )}
-                <div className="preview-info">
-                  <span className="preview-name">✓ {cardPreview.name}</span>
-                  <span className="preview-hint">Press Enter to submit</span>
-                </div>
-              </div>
-            ) : (
-              <div className="card-preview not-found">
-                ✗ No card found matching "{guessInput}"
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Game Over Panel */}
       {gameState.gameOver && (
-        <div className="game-over-panel">
-          <div className="result-banner" style={{ borderColor: getPerformanceRating(gameState.score).color }}>
-            <span className="result-emoji">{getPerformanceRating(gameState.score).emoji}</span>
-            <span className="result-rating">{getPerformanceRating(gameState.score).rating}</span>
+        <div className="game-over-compact">
+          <div className="result-row">
+            <perf.Icon color={perf.color} />
+            <span className="result-text" style={{ color: perf.color }}>{perf.rating}</span>
             <span className="result-score">{gameState.score}/9</span>
           </div>
           
-          {stats && (
-            <div className="community-stats">
-              <span className="players-today">{stats.totalGuesses || 0} guesses from players today</span>
+          <div className="share-row">
+            <div className="share-grid">
+              {gameState.board.slice(0, 3).map((c, i) => <div key={i} className={`share-cell ${c ? 'filled' : ''}`} />)}
+              {gameState.board.slice(3, 6).map((c, i) => <div key={i+3} className={`share-cell ${c ? 'filled' : ''}`} />)}
+              {gameState.board.slice(6, 9).map((c, i) => <div key={i+6} className={`share-cell ${c ? 'filled' : ''}`} />)}
             </div>
-          )}
-          
-          <div className="share-preview">
-            {getShareText()}
+            <button className={`copy-btn ${gameId} ${copied ? 'copied' : ''}`} onClick={copyResults}>
+              <CopyIcon />
+              {copied ? 'Copied!' : 'Copy to Clipboard'}
+            </button>
           </div>
           
-          <button className={`btn-primary ${gameId} share-btn`} onClick={shareResults}>
-            Share Results
-          </button>
-          
-          <div className="next-puzzle">
+          <div className="next-row">
             <span className="next-label">Next puzzle in</span>
             <span className="countdown">
-              {String(countdown.hours).padStart(2, '0')}:
-              {String(countdown.minutes).padStart(2, '0')}:
-              {String(countdown.seconds).padStart(2, '0')}
+              {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
             </span>
           </div>
         </div>
       )}
 
-      <div className="rules">
-        <h3 className={gameId}>How to Play</h3>
-        <p>
-          Click a cell and type a card name that matches <strong>both</strong> the 
-          row and column criteria. No autocomplete — you need to know your cards! 
-          You have 9 guesses to fill all 9 cells. Each card can only be used once. 
-          The puzzle changes daily.
-        </p>
-      </div>
+      {/* Input Modal */}
+      {showInputModal && gameState.selectedCell !== null && (
+        <div className="modal-overlay" onClick={closeInputModal}>
+          <div className="input-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={closeInputModal}>
+              <CloseIcon />
+            </button>
+            
+            <div className="modal-criteria">
+              <span className={`criteria-tag ${gameState.rowCategories[Math.floor(gameState.selectedCell / 3)]?.colorClass || ''}`}>
+                {gameState.rowCategories[Math.floor(gameState.selectedCell / 3)]?.label}
+              </span>
+              <span className="criteria-plus">+</span>
+              <span className={`criteria-tag ${gameState.colCategories[gameState.selectedCell % 3]?.colorClass || ''}`}>
+                {gameState.colCategories[gameState.selectedCell % 3]?.label}
+              </span>
+            </div>
+            
+            <form className="modal-form" onSubmit={(e) => { e.preventDefault(); submitGuess(); }}>
+              <input
+                ref={inputRef}
+                type="text"
+                className={`modal-input ${gameId} ${cardPreview ? 'valid' : ''}`}
+                placeholder="Type card name..."
+                value={guessInput}
+                onChange={(e) => setGuessInput(e.target.value)}
+                autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+              />
+            </form>
+            
+            {/* Preview */}
+            <div className="modal-preview">
+              {guessInput.length >= 3 && (
+                <>
+                  {['thisansweriscorrect', 'cheat', 'win'].includes(guessInput.trim().toLowerCase()) ? (
+                    <div className="preview-found cheat">
+                      <span>CHEAT MODE</span>
+                      <small>Press Enter to auto-win</small>
+                    </div>
+                  ) : lookingUp ? (
+                    <div className="preview-loading">Searching...</div>
+                  ) : cardPreview ? (
+                    <div className="preview-found">
+                      {game.getCardImage(cardPreview) && (
+                        <img src={game.getCardImage(cardPreview)} alt="" className="preview-img" />
+                      )}
+                      <div className="preview-details">
+                        <span className="preview-name">{cardPreview.name}</span>
+                        <small>Press Enter to submit</small>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="preview-not-found">No card found</div>
+                  )}
+                </>
+              )}
+            </div>
+            
+            {message && (
+              <div className={`modal-message ${message.type}`}>
+                {message.text}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal */}
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="help-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowHelp(false)}>
+              <CloseIcon />
+            </button>
+            <h2>How to Play</h2>
+            <div className="help-content">
+              <p>Click a cell and type a card name that matches <strong>both</strong> the row and column criteria.</p>
+              <p>No autocomplete — you need to know your cards!</p>
+              <p>You have <strong>9 guesses</strong> to fill all 9 cells.</p>
+              <p>Each card can only be used <strong>once</strong>.</p>
+              <p>New puzzle <strong>daily</strong> at midnight UTC.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
