@@ -41,7 +41,8 @@ function Home() {
         if (hiddenSnap.exists()) {
           setHiddenGames(hiddenSnap.data().games || []);
         } else {
-          setHiddenGames([]); // No hidden games
+          // Default: hide FAB and Gymnastics, focus on MTG
+          setHiddenGames(['fab', 'gymnastics']);
         }
         
         // Load game images
